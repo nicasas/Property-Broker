@@ -198,10 +198,23 @@ def report_commission(
 
     # Fronteras: se pregunta a los services de los otros modulos, nunca a sus tablas.
     listing = listings_service.get_listing(session, listing_id)
-    # Los roles de una comision son cuentas operables. La externa queda fuera:
-    # acreditarla seria sacar plata del sistema por la puerta de atras.
+
+    # LOS TRES ROLES se validan aqui, incluido el que NO viene del request.
+    #
+    # `listing_broker_account_id` se copia del listing, y por un tiempo esa fue su
+    # unica defensa: se validaba al CREAR el listing y nunca mas. Cualquier fila que
+    # no hubiera pasado por ese service —anterior al guard, sembrada, insertada por
+    # un script— llegaba hasta aca sin revisar y terminaba acreditando a la cuenta
+    # externa en el split. La fuga estaba demostrada: 400.000 salieron del sistema
+    # con `SUM(ledger) == 0` y la reconciliacion diciendo "todo bien".
+    #
+    # Se revalida en el momento de CONGELAR el snapshot, que es cuando este valor
+    # deja de pertenecer al listing y pasa a ser el que va a mover plata.
     accounts_service.require_settleable_account(session, reported_by_account_id)
     accounts_service.require_settleable_account(session, selling_broker_account_id)
+    accounts_service.require_settleable_account(
+        session, listing.listing_broker_account_id
+    )
 
     commission = Commission(
         id=uuid.uuid4(),

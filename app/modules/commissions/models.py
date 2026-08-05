@@ -5,18 +5,22 @@ from datetime import datetime
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base, EnumAsString
+from app.modules.accounts.models import SETTLEABLE_COMPANION_COMMENT
 from app.modules.commissions.state_machine import CommissionStatus
 
 
@@ -45,20 +49,55 @@ class Commission(Base):
         PgUUID(as_uuid=True), ForeignKey("listings.id"), nullable=False
     )
 
+    # ------------------------------------------------------------------
+    # LAS TRES CUENTAS QUE ALIMENTAN EL SPLIT.
+    #
+    # Estas columnas —no las de `listings`— son las que `approve_commission` lee
+    # para construir los legs y mover plata. Por eso llevan cada una el patron de
+    # FK PARCIAL VIA COLUMNA GENERADA (ver `accounts.models.Account.is_settleable`):
+    # la columna acompañante `_is_settleable` esta clavada en `true` por CHECK y
+    # forma una FK compuesta contra `accounts (id, is_settleable)`.
+    #
+    # Blindar solo `listings` habria dejado abierto el INSERT directo a esta tabla,
+    # que es justamente donde el snapshot deja de depender del listing. La garantia
+    # tiene que estar sobre la columna que el approve lee para mover plata.
+    # ------------------------------------------------------------------
+
     # El broker que cobro la comision bruta y la reporta. Es de SU saldo que sale
     # el split (modelo (a): el que tiene la plata paga hacia afuera).
     reported_by_account_id: Mapped[uuid.UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+        PgUUID(as_uuid=True), nullable=False
+    )
+    reported_by_is_settleable: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+        comment=SETTLEABLE_COMPANION_COMMENT,
     )
 
     # Broker que trajo al cliente.
     selling_broker_account_id: Mapped[uuid.UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+        PgUUID(as_uuid=True), nullable=False
+    )
+    selling_broker_is_settleable: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+        comment=SETTLEABLE_COMPANION_COMMENT,
     )
 
     # Broker que publico el inmueble, copiado del listing al reportar.
     listing_broker_account_id: Mapped[uuid.UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+        PgUUID(as_uuid=True), nullable=False
+    )
+    listing_broker_is_settleable: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+        comment=SETTLEABLE_COMPANION_COMMENT,
     )
 
     gross_amount: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -125,6 +164,35 @@ class Commission(Base):
             " AND selling_broker_share IS NOT NULL"
             " AND platform_share IS NOT NULL)",
             name="ck_commissions_executed_has_shares",
+        ),
+        # Las tres cuentas del split solo pueden apuntar a cuentas liquidables.
+        # La columna acompañante clavada en `true` es lo que hace que la FK no
+        # pueda resolver contra la cuenta externa (`is_settleable = false`).
+        CheckConstraint(
+            "reported_by_is_settleable", name="ck_commissions_reported_by_settleable"
+        ),
+        CheckConstraint(
+            "selling_broker_is_settleable",
+            name="ck_commissions_selling_broker_settleable",
+        ),
+        CheckConstraint(
+            "listing_broker_is_settleable",
+            name="ck_commissions_listing_broker_settleable",
+        ),
+        ForeignKeyConstraint(
+            ["reported_by_account_id", "reported_by_is_settleable"],
+            ["accounts.id", "accounts.is_settleable"],
+            name="fk_commissions_reported_by_settleable",
+        ),
+        ForeignKeyConstraint(
+            ["selling_broker_account_id", "selling_broker_is_settleable"],
+            ["accounts.id", "accounts.is_settleable"],
+            name="fk_commissions_selling_broker_settleable",
+        ),
+        ForeignKeyConstraint(
+            ["listing_broker_account_id", "listing_broker_is_settleable"],
+            ["accounts.id", "accounts.is_settleable"],
+            name="fk_commissions_listing_broker_settleable",
         ),
         Index("ix_commissions_status", "status"),
         Index("ix_commissions_listing_id", "listing_id"),
