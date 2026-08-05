@@ -31,6 +31,9 @@ permitiría extraer un módulo a su propio servicio sin reescribir dominio.
 
 ## Modelo de integridad
 
+> Referencia técnica completa —mecanismo, propósito y evidencia de cada defensa—
+> en **[docs/INTEGRITY.md](docs/INTEGRITY.md)**.
+
 Defensas apiladas, cada una cubre un modo de falla distinto:
 
 1. **`CHECK (balance >= 0)`** a nivel de tabla — última línea; aunque la app falle,
