@@ -38,7 +38,11 @@ services:
       retries: 10
 
   api:
-    build: .
+    # El contexto de build es ./backend, no la raiz: dentro de la imagen el layout
+    # sigue siendo el mismo (WORKDIR /app con app/, alembic/, alembic.ini...), asi
+    # que ni el Dockerfile ni el entrypoint ni las rutas relativas de Alembic o
+    # pytest necesitan cambiar por la reorganizacion.
+    build: ./backend
     container_name: broker_api
     # --reload solo en desarrollo; la imagen no lo trae.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -48,7 +52,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      # Monta solo el backend: con la raiz montada, /app tendria dentro el propio
+      # docker-compose.yml y el futuro frontend/, y el --reload de uvicorn vigilaria
+      # archivos que no son del servicio.
+      - ./backend:/app
     depends_on:
       postgres:
         condition: service_healthy

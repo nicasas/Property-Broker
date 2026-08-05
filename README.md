@@ -9,20 +9,29 @@ ni ante concurrencia, ni ante reintentos.
 Monolito modular: un solo deployable organizado **por dominio de negocio**, no por
 capa técnica. Cada módulo es autocontenido (`router → service → repository → models → schemas`).
 
+Monorepo: `backend/` y `frontend/` como deployables separados, orquestados por un
+`docker-compose.yml` en la raíz.
+
 ```
-app/
-├── main.py              # monta los routers de cada módulo
-├── core/
-│   ├── config.py        # settings
-│   ├── database.py      # engine, sesión, contexto transaccional
-│   ├── idempotency.py   # dependencia de Idempotency-Key
-│   └── events.py        # bus de eventos in-process (detrás de interfaz)
-├── modules/
-│   ├── accounts/        # brokers + saldos          (núcleo bancario)
-│   ├── ledger/          # asientos inmutables       (fuente de verdad)
-│   ├── listings/        # inmueble + config split % (mínimo)
-│   └── commissions/     # motor de split + state machine
-└── tests/
+├── docker-compose.yml   # orquesta el monorepo
+├── docs/INTEGRITY.md    # referencia técnica del modelo de integridad
+├── frontend/            # Fase 4 — todavía vacío
+└── backend/
+    ├── Dockerfile
+    ├── alembic/
+    └── app/
+        ├── main.py              # monta los routers de cada módulo
+        ├── core/
+        │   ├── config.py        # settings
+        │   ├── database.py      # engine, sesión, contexto transaccional
+        │   ├── idempotency.py   # dependencia de Idempotency-Key
+        │   └── events.py        # bus de eventos in-process (detrás de interfaz)
+        ├── modules/
+        │   ├── accounts/        # brokers + saldos          (núcleo bancario)
+        │   ├── ledger/          # asientos inmutables       (fuente de verdad)
+        │   ├── listings/        # inmueble + config split % (mínimo)
+        │   └── commissions/     # motor de split + state machine
+        └── tests/
 ```
 
 **Regla de fronteras:** un módulo NUNCA hace queries sobre las tablas de otro.
@@ -111,9 +120,12 @@ no basta.
 ## Correr
 
 ```bash
-cp .env.example .env
+cp backend/.env.example backend/.env
 docker compose up --build
 ```
+
+El `docker-compose.yml` vive en la raíz y orquesta el monorepo; el backend se construye
+desde `./backend`.
 
 Las migraciones se aplican solas al arrancar (`docker-entrypoint.sh`), antes de que
 la API acepte el primer request.
