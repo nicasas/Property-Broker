@@ -196,4 +196,20 @@ class Commission(Base):
         ),
         Index("ix_commissions_status", "status"),
         Index("ix_commissions_listing_id", "listing_id"),
+        # "Mis comisiones": filtro por broker que reporta, ordenado por fecha.
+        #
+        # Compuesto y no solo sobre `reported_by_account_id` porque la lista se
+        # ordena por `created_at DESC`: con las dos columnas, el filtro y el orden
+        # salen del mismo indice. No hace falta declararlo DESC — Postgres recorre
+        # un indice ascendente hacia atras sin costo.
+        #
+        # La FK compuesta sobre (reported_by_account_id, reported_by_is_settleable)
+        # NO crea un indice: Postgres solo indexa automaticamente el lado
+        # referenciado, no el referenciante. Y agregar la columna acompanante aqui
+        # no aportaria nada, porque es constante `true` y no filtra nada.
+        Index(
+            "ix_commissions_reported_by_created_at",
+            "reported_by_account_id",
+            "created_at",
+        ),
     )
