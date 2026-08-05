@@ -341,6 +341,11 @@ def get_commission(session: Session, commission_id: uuid.UUID) -> Commission:
 
 
 def list_commissions(
-    session: Session, *, status: CommissionStatus | None = None
+    session: Session,
+    *,
+    status: CommissionStatus | None = None,
+    reported_by_account_id: uuid.UUID | None = None,
 ) -> list[Commission]:
-    return repository.list_all(session, status=status)
+    return repository.list_all(
+        session, status=status, reported_by_account_id=reported_by_account_id
+    )

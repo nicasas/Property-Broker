@@ -119,11 +119,18 @@ def reject_commission(
 @router.get("", response_model=list[CommissionResponse])
 def list_commissions(
     status_filter: CommissionStatus | None = Query(default=None, alias="status"),
+    reported_by_account_id: uuid.UUID | None = Query(
+        default=None,
+        description='Filtra por el broker que reporto la comision ("mis comisiones").',
+    ),
     db: Session = Depends(get_db),
 ) -> list[CommissionResponse]:
+    """Ambos filtros son opcionales y componibles. Sin ninguno, devuelve todo."""
     return [
         CommissionResponse.model_validate(c)
-        for c in service.list_commissions(db, status=status_filter)
+        for c in service.list_commissions(
+            db, status=status_filter, reported_by_account_id=reported_by_account_id
+        )
     ]
 
 

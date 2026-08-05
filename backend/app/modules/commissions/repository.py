@@ -42,9 +42,23 @@ def get_for_update(session: Session, commission_id: uuid.UUID) -> Commission | N
 
 
 def list_all(
-    session: Session, *, status: CommissionStatus | None = None
+    session: Session,
+    *,
+    status: CommissionStatus | None = None,
+    reported_by_account_id: uuid.UUID | None = None,
 ) -> list[Commission]:
+    """Lista comisiones, con filtros opcionales. Sin filtros, devuelve todo.
+
+    El filtro por `reported_by_account_id` es la consulta de "mis comisiones" y es
+    la que justifica `ix_commissions_reported_by_created_at`: el indice es compuesto
+    sobre (reported_by_account_id, created_at), asi que cubre el `WHERE` y el
+    `ORDER BY` de esta misma query con un solo recorrido.
+    """
     query = select(Commission).order_by(Commission.created_at.desc())
     if status is not None:
         query = query.where(Commission.status == status)
+    if reported_by_account_id is not None:
+        query = query.where(
+            Commission.reported_by_account_id == reported_by_account_id
+        )
     return list(session.scalars(query))
