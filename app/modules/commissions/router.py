@@ -88,17 +88,32 @@ def approve_commission(
 def reject_commission(
     commission_id: uuid.UUID,
     body: RejectCommissionRequest,
-    db: Session = Depends(get_db),
-) -> CommissionResponse:
-    """Rechaza una comision pendiente. No mueve plata, no necesita Idempotency-Key:
-    rechazar dos veces deja el mismo estado que rechazar una."""
-    commission = service.reject_commission(
-        db,
-        commission_id=commission_id,
-        rejected_by=body.rejected_by,
-        reason=body.reason,
+    idempotency_key: str = Depends(require_idempotency_key),
+) -> dict:
+    """Rechaza una comision pendiente. `PENDING` -> `REJECTED`.
+
+    Exige Idempotency-Key igual que `approve`, aunque no mueva saldo. Son las dos
+    transiciones de la MISMA maquina de estados, y dos transiciones hermanas con
+    contratos distintos obligan a quien consume la API a recordar cual es cual.
+
+    Ademas hay una diferencia observable que el estado final no refleja: sin la
+    key, un reintento sobrescribiria `rejected_by` y `rejection_reason` con los del
+    segundo intento. El estado seria el mismo, la trazabilidad no.
+    """
+    return execute_idempotent(
+        key=idempotency_key,
+        endpoint=f"POST /commissions/{commission_id}/reject",
+        payload=body.model_dump(mode="json"),
+        handler=lambda session: _serialize(
+            service.reject_commission(
+                session,
+                commission_id=commission_id,
+                rejected_by=body.rejected_by,
+                reason=body.reason,
+            )
+        ),
+        success_status=200,
     )
-    return CommissionResponse.model_validate(commission)
 
 
 @router.get("", response_model=list[CommissionResponse])

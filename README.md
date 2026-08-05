@@ -140,12 +140,13 @@ Motor de comisiones:
 | `POST` | `/listings` | acuerdo de reparto en bps |
 | `POST` | `/commissions` | reporta → `PENDING`. **Idempotency-Key** |
 | `POST` | `/commissions/{id}/approve` | aprueba **y ejecuta el split**. **Idempotency-Key** |
-| `POST` | `/commissions/{id}/reject` | `PENDING` → `REJECTED` |
+| `POST` | `/commissions/{id}/reject` | `PENDING` → `REJECTED`. **Idempotency-Key** |
 | `GET` | `/commissions` · `/commissions/{id}` | |
 
-Toda operación que mueve plata exige el header `Idempotency-Key` (UUID del cliente).
-Misma key + mismo payload → se repite la respuesta guardada. Misma key + otro payload
-→ `409`.
+Toda operación que mueve plata exige el header `Idempotency-Key` (UUID del cliente),
+y también las dos transiciones de la máquina de estados (`approve` y `reject`) — son
+hermanas y sería confuso que tuvieran contratos distintos. Misma key + mismo payload
+→ se repite la respuesta guardada. Misma key + otro payload → `409`.
 
 ### Migraciones
 
