@@ -465,6 +465,112 @@ def test_aprobar_de_nuevo_con_OTRA_key_tampoco_paga_dos_veces(
     assert_system_is_balanced()
 
 
+def test_listar_comisiones_filtrando_por_el_broker_que_reporta(
+    client, make_broker, make_listing, report_commission
+):
+    """"Mis comisiones": el filtro que usa la vista del broker.
+
+    Es la consulta que justifica `ix_commissions_reported_by_created_at`, compuesto
+    sobre (reported_by_account_id, created_at): cubre el WHERE y el ORDER BY de esta
+    misma query.
+    """
+    ana = make_broker(balance=1_000_000)
+    beto = make_broker(balance=1_000_000)
+    tercero = make_broker()
+
+    listing_ana = make_listing(listing_broker_account_id=ana)
+    listing_beto = make_listing(listing_broker_account_id=beto)
+
+    reportadas_por_ana = [
+        report_commission(
+            listing_id=listing_ana,
+            reported_by_account_id=ana,
+            selling_broker_account_id=tercero,
+            gross_amount=monto,
+        )
+        for monto in (100_000, 200_000)
+    ]
+    reportada_por_beto = report_commission(
+        listing_id=listing_beto,
+        reported_by_account_id=beto,
+        selling_broker_account_id=tercero,
+        gross_amount=300_000,
+    )
+
+    de_ana = client.get("/commissions", params={"reported_by_account_id": str(ana)}).json()
+    assert {c["id"] for c in de_ana} == {str(x) for x in reportadas_por_ana}
+
+    de_beto = client.get("/commissions", params={"reported_by_account_id": str(beto)}).json()
+    assert [c["id"] for c in de_beto] == [str(reportada_por_beto)]
+
+    # Mas reciente primero, igual que sin filtro.
+    assert de_ana[0]["gross_amount"] == 200_000
+
+    # Un broker sin comisiones reportadas devuelve lista vacia, no error.
+    assert client.get(
+        "/commissions", params={"reported_by_account_id": str(tercero)}
+    ).json() == []
+
+
+def test_sin_filtro_el_listado_no_cambia(
+    client, make_broker, make_listing, report_commission
+):
+    """El parametro es opcional: omitirlo deja el comportamiento anterior intacto."""
+    ana = make_broker(balance=1_000_000)
+    beto = make_broker(balance=1_000_000)
+    tercero = make_broker()
+
+    report_commission(
+        listing_id=make_listing(listing_broker_account_id=ana),
+        reported_by_account_id=ana,
+        selling_broker_account_id=tercero,
+        gross_amount=100_000,
+    )
+    report_commission(
+        listing_id=make_listing(listing_broker_account_id=beto),
+        reported_by_account_id=beto,
+        selling_broker_account_id=tercero,
+        gross_amount=200_000,
+    )
+
+    assert len(client.get("/commissions").json()) == 2
+
+
+def test_los_dos_filtros_se_componen(
+    client, make_broker, make_listing, report_commission
+):
+    """`status` y `reported_by_account_id` se aplican juntos, no uno u otro."""
+    ana = make_broker(balance=1_000_000)
+    tercero = make_broker()
+    listing = make_listing(listing_broker_account_id=ana)
+
+    pendiente = report_commission(
+        listing_id=listing,
+        reported_by_account_id=ana,
+        selling_broker_account_id=tercero,
+        gross_amount=100_000,
+    )
+    a_ejecutar = report_commission(
+        listing_id=listing,
+        reported_by_account_id=ana,
+        selling_broker_account_id=tercero,
+        gross_amount=200_000,
+    )
+    client.post(
+        f"/commissions/{a_ejecutar}/approve",
+        json={"approved_by": "ops@habi.co"},
+        headers={"Idempotency-Key": str(uuid.uuid4())},
+    )
+
+    solo_pendientes = client.get(
+        "/commissions",
+        params={"reported_by_account_id": str(ana), "status": "PENDING"},
+    ).json()
+
+    assert [c["id"] for c in solo_pendientes] == [str(pendiente)]
+    assert_system_is_balanced()
+
+
 def test_reject_exige_idempotency_key(client, make_broker, make_listing, report_commission):
     """Mismo contrato que approve: son dos transiciones de la misma maquina de estados."""
     a = make_broker(balance=1_000_000)
