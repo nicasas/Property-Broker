@@ -4,17 +4,20 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
-    ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     String,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.modules.accounts.models import SETTLEABLE_COMPANION_COMMENT
 
 # Los porcentajes se guardan en BASIS POINTS enteros: 10.000 bps = 100%.
 # Nunca fracciones, nunca float. 33,33% es 3333 bps, un entero exacto, y no
@@ -41,7 +44,23 @@ class Listing(Base):
 
     # El broker que publico el inmueble.
     listing_broker_account_id: Mapped[uuid.UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("accounts.id"), nullable=False
+        PgUUID(as_uuid=True), nullable=False
+    )
+
+    # Acompañante del patron de FK PARCIAL VIA COLUMNA GENERADA (ver el comentario
+    # extenso en `accounts.models.Account.is_settleable`).
+    #
+    # Esta columna esta clavada en `true` por un CHECK y forma, junto con
+    # `listing_broker_account_id`, una FK compuesta contra `accounts (id,
+    # is_settleable)`. Como la cuenta externa tiene `is_settleable = false`, no
+    # existe fila del otro lado que satisfaga la FK: es imposible que un inmueble
+    # quede captado por la cuenta externa, venga la escritura de donde venga.
+    listing_broker_is_settleable: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+        comment=SETTLEABLE_COMPANION_COMMENT,
     )
 
     listing_broker_bps: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -63,5 +82,14 @@ class Listing(Base):
         CheckConstraint(
             "listing_broker_bps >= 0 AND selling_broker_bps >= 0 AND platform_bps >= 0",
             name="ck_listings_bps_non_negative",
+        ),
+        CheckConstraint(
+            "listing_broker_is_settleable",
+            name="ck_listings_broker_is_settleable",
+        ),
+        ForeignKeyConstraint(
+            ["listing_broker_account_id", "listing_broker_is_settleable"],
+            ["accounts.id", "accounts.is_settleable"],
+            name="fk_listings_broker_settleable",
         ),
     )
