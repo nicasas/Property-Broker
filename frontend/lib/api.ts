@@ -98,10 +98,85 @@ export type Reconciliation = {
   mismatches: unknown[];
 };
 
+export type Listing = {
+  id: string;
+  address: string;
+  listing_broker_account_id: string;
+  /** Basis points enteros: 10.000 bps = 100%. Nunca fracciones. */
+  listing_broker_bps: number;
+  selling_broker_bps: number;
+  platform_bps: number;
+  created_at: string;
+};
+
+export type CommissionStatus = "PENDING" | "EXECUTED" | "REJECTED";
+
+export type Commission = {
+  id: string;
+  listing_id: string;
+  reported_by_account_id: string;
+  listing_broker_account_id: string;
+  selling_broker_account_id: string;
+
+  gross_amount: number;
+  listing_broker_bps: number;
+  selling_broker_bps: number;
+  platform_bps: number;
+
+  status: CommissionStatus;
+  evidence: string;
+
+  /** Se llenan al ejecutar; null mientras está pendiente. */
+  listing_broker_share: number | null;
+  selling_broker_share: number | null;
+  platform_share: number | null;
+  movement_id: string | null;
+
+  approved_by: string | null;
+  approved_at: string | null;
+  rejected_by: string | null;
+  rejected_at: string | null;
+  rejection_reason: string | null;
+
+  created_at: string;
+};
+
+export type LedgerEntry = {
+  id: string;
+  movement_id: string;
+  account_id: string;
+  /** Firmado y en centavos: negativo debita, positivo acredita. */
+  amount: number;
+  balance_after: number;
+  operation_type: "DEPOSIT" | "TRANSFER" | "COMMISSION_SPLIT";
+  reference: string | null;
+  created_at: string;
+};
+
 export function getAccounts() {
   return api.get<Account[]>("/accounts");
 }
 
 export function getReconciliation() {
   return api.get<Reconciliation>("/ledger/reconciliation");
+}
+
+export function getListings() {
+  return api.get<Listing[]>("/listings");
+}
+
+export function getCommissions(params?: {
+  status?: CommissionStatus;
+  reportedBy?: string;
+}) {
+  const query = new URLSearchParams();
+  if (params?.status) query.set("status", params.status);
+  // El filtro de "mis comisiones". Lo cubre ix_commissions_reported_by_created_at.
+  if (params?.reportedBy) query.set("reported_by_account_id", params.reportedBy);
+  const suffix = query.size > 0 ? `?${query}` : "";
+  return api.get<Commission[]>(`/commissions${suffix}`);
+}
+
+export function getAccountLedger(accountId: string) {
+  return api.get<LedgerEntry[]>(`/accounts/${accountId}/ledger`);
 }
