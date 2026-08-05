@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: broker_postgres
+    environment:
+      POSTGRES_USER: broker
+      POSTGRES_PASSWORD: broker
+      POSTGRES_DB: broker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U broker -d broker"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # Base de datos SEPARADA para los tests. Los tests de concurrencia necesitan
+  # Postgres real (SQLite no implementa SELECT ... FOR UPDATE de verdad y daria
+  # un falso verde). Va sobre tmpfs: sin volumen, se destruye con el contenedor,
+  # y ninguna corrida de test puede tocar los datos de desarrollo.
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: broker_postgres_test
+    environment:
+      POSTGRES_USER: broker
+      POSTGRES_PASSWORD: broker
+      POSTGRES_DB: broker_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U broker -d broker_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    container_name: broker_api
+    # --reload solo en desarrollo; la imagen no lo trae.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: postgresql+psycopg://broker:broker@postgres:5432/broker
+      TEST_DATABASE_URL: postgresql+psycopg://broker:broker@postgres-test:5432/broker_test
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-test:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
