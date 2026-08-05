@@ -1,0 +1,15 @@
+# Los archivos que se EJECUTAN dentro del contenedor Linux tienen que llegar con
+# finales de linea LF, sin importar el core.autocrlf de quien clone el repo.
+#
+# Con core.autocrlf=true en Windows, git materializa el entrypoint con CRLF y el
+# contenedor no arranca:
+#
+#   /app/docker-entrypoint.sh: 2: set: Illegal option -
+#
+# `sh` lee "set -e\r" y trata el retorno de carro como parte de la opcion. El
+# healthcheck nunca responde y las migraciones nunca corren.
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+
+# El resto queda con la normalizacion por defecto: Python, YAML y Markdown
+# toleran CRLF sin problema.
