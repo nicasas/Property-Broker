@@ -465,6 +465,91 @@ def test_aprobar_de_nuevo_con_OTRA_key_tampoco_paga_dos_veces(
     assert_system_is_balanced()
 
 
+def test_reject_exige_idempotency_key(client, make_broker, make_listing, report_commission):
+    """Mismo contrato que approve: son dos transiciones de la misma maquina de estados."""
+    a = make_broker(balance=1_000_000)
+    b = make_broker()
+    listing = make_listing(listing_broker_account_id=a)
+    commission = report_commission(
+        listing_id=listing,
+        reported_by_account_id=a,
+        selling_broker_account_id=b,
+        gross_amount=500_000,
+    )
+
+    respuesta = client.post(
+        f"/commissions/{commission}/reject",
+        json={"rejected_by": "ops@habi.co", "reason": "evidencia ilegible"},
+    )
+    assert respuesta.status_code == 422  # falta el header
+
+
+def test_reintentar_el_reject_con_la_misma_key_conserva_la_trazabilidad(
+    client, make_broker, make_listing, report_commission, commission_status
+):
+    """Lo que protege la idempotencia aqui no es el saldo, es el registro.
+
+    Rechazar dos veces deja el mismo estado final, asi que a primera vista la key
+    parece innecesaria. Pero sin ella un reintento sobrescribiria `rejected_by` y
+    `rejection_reason` con los del segundo intento: el estado seria el mismo y la
+    trazabilidad no.
+    """
+    a = make_broker(balance=1_000_000)
+    b = make_broker()
+    listing = make_listing(listing_broker_account_id=a)
+    commission = report_commission(
+        listing_id=listing,
+        reported_by_account_id=a,
+        selling_broker_account_id=b,
+        gross_amount=500_000,
+    )
+
+    key = str(uuid.uuid4())
+    body = {"rejected_by": "ops-1", "reason": "evidencia ilegible"}
+    url = f"/commissions/{commission}/reject"
+
+    primera = client.post(url, json=body, headers={"Idempotency-Key": key})
+    segunda = client.post(url, json=body, headers={"Idempotency-Key": key})
+
+    assert primera.status_code == 200
+    assert segunda.json() == primera.json()
+    assert commission_status(commission) == "REJECTED"
+    assert primera.json()["rejected_by"] == "ops-1"
+    assert_system_is_balanced()
+
+
+def test_reject_con_la_misma_key_y_otro_payload_es_conflicto(
+    client, make_broker, make_listing, report_commission
+):
+    """Comportamiento Stripe, igual que en approve y en las operaciones de saldo."""
+    a = make_broker(balance=1_000_000)
+    b = make_broker()
+    listing = make_listing(listing_broker_account_id=a)
+    commission = report_commission(
+        listing_id=listing,
+        reported_by_account_id=a,
+        selling_broker_account_id=b,
+        gross_amount=500_000,
+    )
+
+    key = str(uuid.uuid4())
+    url = f"/commissions/{commission}/reject"
+
+    client.post(
+        url,
+        json={"rejected_by": "ops-1", "reason": "evidencia ilegible"},
+        headers={"Idempotency-Key": key},
+    )
+    segunda = client.post(
+        url,
+        json={"rejected_by": "ops-2", "reason": "otra razon"},
+        headers={"Idempotency-Key": key},
+    )
+
+    assert segunda.status_code == 409
+    assert segunda.json()["error"] == "idempotency_conflict"
+
+
 def test_saldo_insuficiente_por_http_devuelve_409_y_deja_pendiente(
     client, make_broker, make_listing, report_commission, commission_status
 ):
