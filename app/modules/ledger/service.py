@@ -142,6 +142,16 @@ def deposit(
     dentro del sistema.
     """
     _require_positive(amount)
+
+    # El ORIGEN es la cuenta externa por diseño; el DESTINO no puede serlo.
+    #
+    # Hoy `post_movement` ya rechazaria un deposito de la externa hacia si misma por
+    # la regla de cuenta repetida, pero esa es una defensa incidental: protege sin
+    # saber que esta protegiendo. Si esa regla cambiara, o si un caller pasara un
+    # `external_account_id` distinto (es un parametro, no una constante), el sistema
+    # se quedaria sin nada. Este guard es explicito y dice por que existe.
+    accounts_service.require_settleable_account(session, account_id)
+
     return post_movement(
         session,
         legs=[

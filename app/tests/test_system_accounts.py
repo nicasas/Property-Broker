@@ -6,7 +6,7 @@ nadie mas que `deposit()` puede tocarla.
 
 Estos tests cubren un hueco que `SUM(ledger) == 0` NO detecta: usando la cuenta
 externa como contraparte de una transferencia normal, la partida doble sigue
-cuadrando perfecto mientras el sistema acuña plata de la nada.
+cuadrando perfecto mientras el sistema acuÃ±a plata de la nada.
 """
 
 from __future__ import annotations
@@ -32,11 +32,11 @@ def client() -> TestClient:
 
 
 def test_no_se_puede_transferir_desde_la_cuenta_externa(make_broker, balance_of):
-    """Este era el agujero: acuñar plata con una transferencia ordinaria.
+    """Este era el agujero: acuÃ±ar plata con una transferencia ordinaria.
 
     La cuenta externa no tiene CHECK (>= 0), asi que nada la frenaba: se hundia en
     negativo y el destino recibia dinero que nunca entro al sistema. El ledger
-    seguia sumando cero —las dos patas se compensan— y la reconciliacion global
+    seguia sumando cero â€”las dos patas se compensanâ€” y la reconciliacion global
     daba "todo bien".
     """
     destino = make_broker()
@@ -127,6 +127,43 @@ def test_la_cuenta_externa_no_puede_ser_broker_de_una_comision(
                 evidence="contrato.pdf",
             )
 
+    assert_system_is_balanced()
+
+
+def test_no_se_puede_depositar_hacia_la_cuenta_externa(balance_of):
+    """El guard del deposito es INTENCIONAL, no incidental.
+
+    Antes esto se rechazaba igual, pero por la regla de "cuenta repetida" de
+    `post_movement` (origen y destino habrian sido la misma cuenta). El error decia
+    `invalid_movement`, que describe un movimiento mal formado y no la razon real.
+
+    Que el error sea `restricted_account` es lo que prueba que hay un guard que
+    sabe lo que esta protegiendo.
+    """
+    with pytest.raises(RestrictedAccount):
+        with transaction() as session:
+            ledger_service.deposit(
+                session,
+                account_id=EXTERNAL_ACCOUNT_ID,
+                amount=5_000,
+                external_account_id=EXTERNAL_ACCOUNT_ID,
+            )
+
+    assert balance_of(EXTERNAL_ACCOUNT_ID) == 0
+    assert_system_is_balanced()
+
+
+def test_si_se_puede_depositar_a_la_plataforma(balance_of):
+    """La restriccion del deposito es sobre la externa, no sobre cuentas de sistema."""
+    with transaction() as session:
+        ledger_service.deposit(
+            session,
+            account_id=PLATFORM_ACCOUNT_ID,
+            amount=5_000,
+            external_account_id=EXTERNAL_ACCOUNT_ID,
+        )
+
+    assert balance_of(PLATFORM_ACCOUNT_ID) == 5_000
     assert_system_is_balanced()
 
 
