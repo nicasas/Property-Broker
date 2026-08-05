@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Sistema de diseño.
+
+   Todo lo que hace que la interfaz se vea intencional se decide acá: una paleta
+   corta, una escala tipográfica con jerarquía real y espaciado que respira. Las
+   pantallas después solo componen estos tokens — no inventan colores ni tamaños.
+
+   Paleta deliberadamente corta: neutros cálidos para el 90% de la superficie, un
+   solo acento de marca, y tres colores semánticos que SOLO hablan de dinero
+   (entra, sale, pendiente). Que el verde signifique siempre lo mismo es lo que
+   hace legible un ledger de un vistazo.
+--------------------------------------------------------------------------- */
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Neutros cálidos: menos clínicos que un gris puro, más cercanos al papel. */
+  --color-canvas: oklch(0.988 0.002 90);
+  --color-surface: oklch(1 0 0);
+  --color-line: oklch(0.925 0.004 90);
+  --color-line-strong: oklch(0.86 0.006 90);
+  --color-ink: oklch(0.24 0.012 75);
+  --color-muted: oklch(0.545 0.014 75);
+  --color-faint: oklch(0.70 0.012 75);
+
+  /* Acento de marca. Uno solo, para que signifique algo cuando aparece. */
+  --color-brand: oklch(0.505 0.185 277);
+  --color-brand-hover: oklch(0.445 0.19 277);
+  --color-brand-soft: oklch(0.955 0.022 277);
+  --color-brand-line: oklch(0.885 0.05 277);
+
+  /* Semánticos de dinero. */
+  --color-positive: oklch(0.545 0.135 157);
+  --color-positive-soft: oklch(0.96 0.03 157);
+  --color-negative: oklch(0.545 0.19 22);
+  --color-negative-soft: oklch(0.965 0.02 22);
+  --color-pending: oklch(0.60 0.13 70);
+  --color-pending-soft: oklch(0.965 0.04 75);
+
+  /* Radios: contenidos. Nada de píldoras gigantes. */
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  /* Toda cifra de dinero va en cifras tabulares: las columnas alinean y los
+     números no bailan al actualizarse tras una operación. En una interfaz
+     financiera esto no es un detalle estético, es legibilidad. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  ::selection {
+    background-color: var(--color-brand-soft);
+  }
+}

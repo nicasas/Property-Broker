@@ -62,5 +62,24 @@ services:
       postgres-test:
         condition: service_healthy
 
+  frontend:
+    build: ./frontend
+    container_name: broker_frontend
+    environment:
+      # El navegador NUNCA habla directo con la API: no resolveria `api`, que es
+      # un nombre de la red interna del compose. Todo fetch sale de Server
+      # Components o route handlers de Next, del lado del servidor. Cero CORS y el
+      # backend queda intacto.
+      API_BASE_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      # Volumen anonimo: preserva el node_modules instalado en la imagen para que
+      # el bind mount del host no lo tape con un directorio vacio.
+      - /app/node_modules
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
