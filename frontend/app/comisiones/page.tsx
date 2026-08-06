@@ -48,7 +48,7 @@ export default async function CollaborationsPage() {
       key: "EXECUTED" as const,
       title: "Liquidadas",
       icon: "task_alt",
-      hint: "La plata ya se movió y quedó asentada en el ledger.",
+      hint: "La plata ya se movió y quedó anotada en el libro de movimientos.",
       items: mine.filter((c) => c.status === "EXECUTED"),
     },
     {

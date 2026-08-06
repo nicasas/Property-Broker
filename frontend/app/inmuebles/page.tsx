@@ -97,8 +97,8 @@ function ListingCard({
 }) {
   const segments = [
     { label: "Capta", bps: listing.listing_broker_bps, className: "bg-on-tertiary-container" },
-    { label: "Vende", bps: listing.selling_broker_bps, className: "bg-secondary-container" },
-    { label: "Plataforma", bps: listing.platform_bps, className: "bg-surface-container/40" },
+    { label: "Vende", bps: listing.selling_broker_bps, className: "bg-secondary" },
+    { label: "Plataforma", bps: listing.platform_bps, className: "bg-surface-container-highest" },
   ];
 
   return (
@@ -118,7 +118,7 @@ function ListingCard({
           Se elige de forma determinista por id, así que no cambia entre renders.
           Detrás queda el fondo con el icono, que es lo que se ve si la imagen no
           carga — la tarjeta nunca se rompe. */}
-      <div className="relative flex aspect-[3/2] flex-col justify-end overflow-hidden bg-tertiary-container p-md">
+      <div className="relative aspect-[3/2] overflow-hidden bg-tertiary-container">
         <div className="absolute inset-0 grid place-items-center">
           <Icon
             name="apartment"
@@ -132,27 +132,7 @@ function ListingCard({
           loading="lazy"
           className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-tertiary-container/90 via-tertiary-container/20 to-transparent" />
-        <div className="relative">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-xs text-label-md text-on-tertiary">
-              <Icon name="local_offer" className="text-[16px]" />
-              Split de comisión
-            </span>
-            <span className="tnum rounded bg-surface/20 px-xs py-[2px] text-mono-data text-secondary-container backdrop-blur-sm">
-              {formatBps(listing.selling_broker_bps)}
-            </span>
-          </div>
-          <div className="mt-xs flex h-2 w-full overflow-hidden rounded-full bg-surface-container/30">
-            {segments.map((segment) => (
-              <div
-                key={segment.label}
-                className={segment.className}
-                style={{ width: `${segment.bps / 100}%` }}
-              />
-            ))}
-          </div>
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-tertiary-container/60 to-transparent" />
       </div>
 
       <div className="flex flex-grow flex-col p-md">
@@ -171,6 +151,11 @@ function ListingCard({
         <p className="mb-md flex items-start gap-xs text-body-md text-on-surface-variant">
           <Icon name="location_on" className="mt-[2px] shrink-0 text-[18px]" />
           <span className="line-clamp-2">{listing.address}</span>
+        </p>
+
+        <p className="mb-sm flex items-center gap-xs text-label-sm-caps uppercase text-on-surface-variant">
+          <Icon name="local_offer" className="text-[16px]" />
+          Split de comisión
         </p>
 
         <div className="mb-md flex flex-wrap gap-sm">

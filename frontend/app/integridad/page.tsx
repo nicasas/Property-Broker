@@ -37,9 +37,11 @@ export default async function IntegrityPage() {
               Integridad del sistema
             </h1>
             <p className="mt-xs max-w-3xl text-body-md text-on-surface-variant">
-              La red funciona sobre un núcleo bancario de partida doble. Cada peso
-              que se mueve queda asentado dos veces, y la suma de todos los
-              asientos tiene que dar exactamente cero.
+              Cada movimiento de dinero se anota dos veces en el libro de
+              movimientos: de dónde salió y a dónde entró. Por eso, si se suman
+              todas las anotaciones, el resultado tiene que ser exactamente cero
+              — lo que sale de un lado entra del otro. Es contabilidad de partida
+              doble, y acá se puede verificar en vivo.
             </p>
           </div>
           <Badge tone={health.is_balanced ? "positive" : "negative"} dot>
@@ -50,18 +52,22 @@ export default async function IntegrityPage() {
 
       <section className="space-y-lg p-lg">
         <div className="grid grid-cols-1 gap-lg md:grid-cols-3">
+          {/* La cifra sola no comunica nada: "suma del ledger = 0" solo lo
+              entiende quien ya sabe que es un ledger. Lo que el numero PRUEBA es
+              que el sistema no invento ni perdio plata, y eso es lo que dice la
+              etiqueta. */}
           <StatCard
-            label="Suma del ledger"
+            label="Dinero creado o destruido"
             value={formatMoney(health.ledger_total)}
             icon={health.is_balanced ? "verified" : "error"}
             tone={health.is_balanced ? "secondary" : "neutral"}
-            caption="Debe ser exactamente cero"
+            caption="Cada peso que salió de una cuenta entró en otra"
           />
           <StatCard
             label="Cuentas verificadas"
             value={health.accounts_checked}
             icon="fact_check"
-            caption="Saldo materializado vs. su propio ledger"
+            caption="Su saldo coincide con su historial de movimientos"
           />
           <StatCard
             label="Dinero vivo en la red"
@@ -182,7 +188,7 @@ const defenses = [
   {
     icon: "history_toggle_off",
     title: "El historial no se puede reescribir",
-    body: "Los asientos del ledger no admiten modificación ni borrado, ni siquiera desde la base de datos. Corregir se hace con un asiento de reversión, como en contabilidad real.",
+    body: "Las anotaciones del libro de movimientos no admiten modificación ni borrado, ni siquiera desde la base de datos. Corregir se hace con una anotación de reversión, como en contabilidad real.",
   },
   {
     icon: "shield",
