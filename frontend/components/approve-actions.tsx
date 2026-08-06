@@ -6,6 +6,7 @@ import { Button, Input, Money } from "@/components/ui";
 import { MutationError, mutate } from "@/lib/client";
 import { formatMoney, formatSignedMoney } from "@/lib/format";
 import { participantsOf } from "@/lib/participants";
+import { useSplitSnapshots } from "@/components/split-snapshot";
 import type { Account, Commission } from "@/lib/api";
 
 /**
@@ -16,10 +17,10 @@ import type { Account, Commission } from "@/lib/api";
  * `router.refresh()`: los Server Components vuelven a consultar la API y esta
  * misma tarjeta recibe los saldos nuevos, sin cambiar de pantalla.
  *
- * La foto vive en estado de cliente y sobrevive al refresh porque el componente
- * no se desmonta: la lista de comisiones es una sola, ordenada por fecha, así que
- * la tarjeta conserva su posición y su clave. Por eso se puede mostrar
- * "antes → después" con números reales de las dos puntas.
+ * La foto NO vive acá sino en un contexto montado sobre el tablero: al aprobarse,
+ * la tarjeta pasa de la columna "Pendientes" a "Liquidadas" y React la desmonta.
+ * Guardarla arriba es lo que permite mostrar el "antes → después" con números
+ * reales de las dos puntas. Ver components/split-snapshot.
  */
 export function ApproveActions({
   commission,
@@ -29,7 +30,10 @@ export function ApproveActions({
   accounts: Account[];
 }) {
   const router = useRouter();
-  const [before, setBefore] = useState<Record<string, number> | null>(null);
+  // La foto de saldos vive sobre el tablero, no en esta tarjeta: al aprobarse,
+  // la tarjeta se mueve de columna y se desmontaría. Ver components/split-snapshot.
+  const { snapshotFor, remember, forget } = useSplitSnapshots();
+  const before = snapshotFor(commission.id);
   const [pending, setPending] = useState<"approve" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
@@ -41,7 +45,8 @@ export function ApproveActions({
     setError(null);
     setPending("approve");
     // Foto de los saldos ANTES de mover un peso.
-    setBefore(
+    remember(
+      commission.id,
       Object.fromEntries(participants.map((p) => [p.account.id, p.account.balance])),
     );
 
@@ -51,7 +56,7 @@ export function ApproveActions({
       });
       router.refresh();
     } catch (e) {
-      setBefore(null);
+      forget(commission.id);
       setError(
         e instanceof MutationError ? e.message : "No se pudo aprobar la comisión.",
       );
@@ -89,20 +94,20 @@ export function ApproveActions({
 
   // ------------------------------------------------------------------ pendiente
   return (
-    <div className="space-y-4">
+    <div className="space-y-md">
       <div>
-        <p className="text-[0.8125rem] font-medium text-ink">
+        <p className="text-label-sm-caps uppercase text-on-surface-variant">
           Saldos antes de aprobar
         </p>
-        <ul className="mt-2.5 space-y-1.5">
+        <ul className="mt-sm space-y-xs">
           {participants.map(({ account, roles }) => (
             <li
               key={account.id}
-              className="flex items-baseline justify-between gap-4"
+              className="flex items-baseline justify-between gap-md"
             >
-              <span className="truncate text-[0.8125rem] text-muted">
+              <span className="truncate text-label-md text-on-surface-variant">
                 {account.name}
-                <span className="ml-1.5 text-faint">{roles.join(" y ")}</span>
+                <span className="ml-xs text-on-surface-variant/60">{roles.join(" y ")}</span>
               </span>
               <Money size="sm" tone="muted">
                 {formatMoney(account.balance)}
@@ -113,7 +118,7 @@ export function ApproveActions({
       </div>
 
       {rejecting ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-sm">
           <Input
             placeholder="Motivo del rechazo"
             value={reason}
@@ -132,7 +137,7 @@ export function ApproveActions({
           </Button>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-sm">
           <Button onClick={onApprove} disabled={pending !== null}>
             {pending === "approve" ? "Ejecutando split…" : "Aprobar y liquidar"}
           </Button>
@@ -143,7 +148,7 @@ export function ApproveActions({
       )}
 
       {error && (
-        <p className="rounded-lg bg-negative-soft px-3 py-2 text-[0.8125rem] text-negative">
+        <p className="rounded-lg bg-error-container px-md py-sm text-label-md text-on-error-container">
           {error}
         </p>
       )}
@@ -190,40 +195,40 @@ function SplitResult({
   const deltaSum = deltas.reduce((sum, d) => sum + d.delta, 0);
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <span className="grid size-5 place-items-center rounded-full bg-positive text-[0.625rem] font-bold text-white">
+    <div className="space-y-md">
+      <div className="flex items-center gap-sm">
+        <span className="grid size-6 place-items-center rounded-full bg-secondary text-label-sm-caps text-on-secondary">
           ✓
         </span>
-        <p className="text-[0.9375rem] font-semibold tracking-tight text-ink">
+        <p className="text-label-md font-semibold text-on-surface">
           Split ejecutado
         </p>
       </div>
 
       {/* Movimiento de saldo, cuenta por cuenta. */}
-      <ul className="space-y-2.5">
+      <ul className="space-y-sm">
         {deltas.map(({ account, roles, before: prev, after, delta }) => (
-          <li key={account.id} className="flex items-center justify-between gap-4">
+          <li key={account.id} className="flex items-center justify-between gap-md">
             <div className="min-w-0">
-              <p className="truncate text-[0.8125rem] font-medium text-ink">
+              <p className="truncate text-label-md font-semibold text-on-surface">
                 {account.name}
               </p>
-              <p className="text-xs text-faint">{roles.join(" y ")}</p>
+              <p className="text-label-sm-caps uppercase text-on-surface-variant/70">{roles.join(" y ")}</p>
             </div>
 
-            <div className="flex shrink-0 items-center gap-3">
-              <span className="tnum text-[0.8125rem] text-faint line-through decoration-faint/50">
+            <div className="flex shrink-0 items-center gap-sm">
+              <span className="tnum text-mono-data text-on-surface-variant/60 line-through">
                 {formatMoney(prev)}
               </span>
-              <span className="text-faint" aria-hidden>
+              <span className="text-on-surface-variant/60" aria-hidden>
                 →
               </span>
-              <span className="tnum text-[0.8125rem] font-semibold text-ink">
+              <span className="tnum text-mono-data text-on-surface">
                 {formatMoney(after)}
               </span>
               <span
-                className={`tnum w-32 text-right text-[0.8125rem] font-semibold ${
-                  delta < 0 ? "text-negative" : "text-positive"
+                className={`tnum w-32 text-right text-mono-data ${
+                  delta < 0 ? "text-error" : "text-secondary"
                 }`}
               >
                 {formatSignedMoney(delta)}
@@ -234,29 +239,29 @@ function SplitResult({
       </ul>
 
       {/* Los deltas suman cero: la plata solo se movió. */}
-      <div className="flex items-center justify-between border-t border-line pt-3">
-        <span className="text-[0.8125rem] text-muted">
+      <div className="flex items-center justify-between border-t border-surface-container-highest pt-sm">
+        <span className="text-label-md text-on-surface-variant">
           Suma de los movimientos
         </span>
-        <span className="tnum text-[0.8125rem] font-semibold text-positive">
+        <span className="tnum text-mono-data text-secondary">
           {formatMoney(deltaSum)}
         </span>
       </div>
 
       {/* El reparto, al centavo. */}
-      <div className="rounded-lg bg-canvas px-4 py-3.5">
-        <p className="text-xs font-medium text-muted">
+      <div className="rounded-xl bg-surface-container-low p-md">
+        <p className="text-label-sm-caps uppercase text-on-surface-variant">
           El reparto suma exacto al bruto
         </p>
-        <p className="tnum mt-1.5 text-[0.8125rem] leading-relaxed text-ink">
+        <p className="tnum mt-sm text-body-md text-on-surface">
           {formatMoney(shares[0])} + {formatMoney(shares[1])} +{" "}
           {formatMoney(shares[2])} ={" "}
           <span className="font-semibold">{formatMoney(sharesTotal)}</span>
         </p>
         {residue !== 0 && (
-          <p className="mt-2 text-xs leading-relaxed text-muted">
+          <p className="mt-sm text-label-md text-on-surface-variant">
             La división no da exacta: sobran{" "}
-            <span className="tnum font-medium text-ink">
+            <span className="tnum font-semibold text-on-surface">
               {formatMoney(residue)}
             </span>{" "}
             que la plataforma absorbe por construcción. Su parte no se calcula con

@@ -1,70 +1,198 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Sistema de diseño.
+   Sistema de diseño, portado de los mockups de Figma (frontend/figma_mockups).
 
-   Todo lo que hace que la interfaz se vea intencional se decide acá: una paleta
-   corta, una escala tipográfica con jerarquía real y espaciado que respira. Las
-   pantallas después solo componen estos tokens — no inventan colores ni tamaños.
+   Los cuatro mockups comparten un `tailwind.config` idéntico; esto es esa misma
+   configuración expresada como tokens de Tailwind v4.
 
-   Paleta deliberadamente corta: neutros cálidos para el 90% de la superficie, un
-   solo acento de marca, y tres colores semánticos que SOLO hablan de dinero
-   (entra, sale, pendiente). Que el verde signifique siempre lo mismo es lo que
-   hace legible un ledger de un vistazo.
+   La nomenclatura es Material Design 3: `surface` / `on-surface`, con una escala
+   de contenedores (`surface-container-lowest` … `-highest`) en vez de una paleta
+   de grises sueltos. La ventaja es que cada token dice DÓNDE va y qué va encima,
+   no de qué color es: `on-surface-variant` siempre es texto secundario sobre una
+   superficie, sin importar el valor.
+
+   Notar dos cosas del mockup que no son accidentes:
+   - `primary` es NEGRO. El color de marca no se usa para decorar sino para las
+     acciones principales; el acento vivo es `secondary` (verde) y su contenedor
+     (menta), reservados para dinero y estados positivos.
+   - Los radios son chicos (2px / 4px / 8px / 12px). Es un lenguaje sobrio y
+     corporativo, no de píldoras redondeadas.
 --------------------------------------------------------------------------- */
 
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* Neutros cálidos: menos clínicos que un gris puro, más cercanos al papel. */
-  --color-canvas: oklch(0.988 0.002 90);
-  --color-surface: oklch(1 0 0);
-  --color-line: oklch(0.925 0.004 90);
-  --color-line-strong: oklch(0.86 0.006 90);
-  --color-ink: oklch(0.24 0.012 75);
-  --color-muted: oklch(0.545 0.014 75);
-  --color-faint: oklch(0.70 0.012 75);
+  /* --- Superficies y texto ------------------------------------------------ */
+  --color-background: #f7f9fb;
+  --color-on-background: #191c1e;
+  --color-surface: #f7f9fb;
+  --color-surface-bright: #f7f9fb;
+  --color-surface-dim: #d8dadc;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f2f4f6;
+  --color-surface-container: #eceef0;
+  --color-surface-container-high: #e6e8ea;
+  --color-surface-container-highest: #e0e3e5;
+  --color-surface-variant: #e0e3e5;
+  --color-on-surface: #191c1e;
+  --color-on-surface-variant: #45464d;
+  --color-inverse-surface: #2d3133;
+  --color-inverse-on-surface: #eff1f3;
 
-  /* Acento de marca. Uno solo, para que signifique algo cuando aparece. */
-  --color-brand: oklch(0.505 0.185 277);
-  --color-brand-hover: oklch(0.445 0.19 277);
-  --color-brand-soft: oklch(0.955 0.022 277);
-  --color-brand-line: oklch(0.885 0.05 277);
+  /* --- Marca: negro para acciones, no para decorar ------------------------ */
+  --color-primary: #000000;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #131b2e;
+  --color-on-primary-container: #7c839b;
+  --color-primary-fixed: #dae2fd;
+  --color-primary-fixed-dim: #bec6e0;
+  --color-on-primary-fixed: #131b2e;
+  --color-on-primary-fixed-variant: #3f465c;
+  --color-inverse-primary: #bec6e0;
+  --color-surface-tint: #565e74;
 
-  /* Semánticos de dinero. */
-  --color-positive: oklch(0.545 0.135 157);
-  --color-positive-soft: oklch(0.96 0.03 157);
-  --color-negative: oklch(0.545 0.19 22);
-  --color-negative-soft: oklch(0.965 0.02 22);
-  --color-pending: oklch(0.60 0.13 70);
-  --color-pending-soft: oklch(0.965 0.04 75);
+  /* --- Acento: verde. Es el color del dinero que entra. ------------------- */
+  --color-secondary: #006c49;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #6cf8bb;
+  --color-on-secondary-container: #00714d;
+  --color-secondary-fixed: #6ffbbe;
+  --color-secondary-fixed-dim: #4edea3;
+  --color-on-secondary-fixed: #002113;
+  --color-on-secondary-fixed-variant: #005236;
 
-  /* Radios: contenidos. Nada de píldoras gigantes. */
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.875rem;
+  /* --- Terciario: azul profundo, para superponer sobre imágenes ----------- */
+  --color-tertiary: #000000;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #0b1c30;
+  --color-on-tertiary-container: #75859d;
+  --color-tertiary-fixed: #d3e4fe;
+  --color-tertiary-fixed-dim: #b7c8e1;
+  --color-on-tertiary-fixed: #0b1c30;
+  --color-on-tertiary-fixed-variant: #38485d;
+
+  /* --- Error -------------------------------------------------------------- */
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  /* --- Bordes ------------------------------------------------------------- */
+  --color-outline: #76777d;
+  --color-outline-variant: #c6c6cd;
+
+  /* --- Radios: contenidos, corporativos ----------------------------------- */
+  --radius-DEFAULT: 0.125rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 0.75rem;
+
+  /* --- Espaciado con nombre ----------------------------------------------- */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-base: 4px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-gutter: 24px;
+  --spacing-xl: 40px;
+  --spacing-sidebar-width: 280px;
+  --spacing-container-max: 1440px;
+
+  /* --- Escala tipográfica ------------------------------------------------- */
+  --text-display-lg: 48px;
+  --text-display-lg--line-height: 1.2;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-display-lg--font-weight: 700;
+
+  --text-headline-lg: 32px;
+  --text-headline-lg--line-height: 1.25;
+  --text-headline-lg--letter-spacing: -0.01em;
+  --text-headline-lg--font-weight: 600;
+
+  --text-headline-md: 24px;
+  --text-headline-md--line-height: 1.3;
+  --text-headline-md--font-weight: 600;
+
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 1.6;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 1.5;
+  --text-body-md--font-weight: 400;
+
+  --text-label-md: 14px;
+  --text-label-md--line-height: 1.4;
+  --text-label-md--letter-spacing: 0.01em;
+  --text-label-md--font-weight: 500;
+
+  --text-label-sm-caps: 12px;
+  --text-label-sm-caps--line-height: 1;
+  --text-label-sm-caps--letter-spacing: 0.05em;
+  --text-label-sm-caps--font-weight: 700;
+
+  --text-mono-data: 14px;
+  --text-mono-data--line-height: 1;
+  --text-mono-data--letter-spacing: 0;
+  --text-mono-data--font-weight: 600;
+
 }
 
 @layer base {
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
   body {
-    background-color: var(--color-canvas);
-    color: var(--color-ink);
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
     font-family: var(--font-sans);
+    overscroll-behavior: none;
   }
 
   /* Toda cifra de dinero va en cifras tabulares: las columnas alinean y los
      números no bailan al actualizarse tras una operación. En una interfaz
-     financiera esto no es un detalle estético, es legibilidad. */
+     financiera esto no es estética, es legibilidad. */
   .tnum {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
 
   ::selection {
-    background-color: var(--color-brand-soft);
+    background-color: var(--color-secondary-container);
+  }
+
+  /* Iconos. Los mockups usan Material Symbols en todas las pantallas; sin esta
+     clase el nombre del icono se vería como texto plano. */
+  .material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings:
+      "FILL" 0,
+      "wght" 400,
+      "GRAD" 0,
+      "opsz" 24;
+  }
+
+  .material-symbols-outlined.filled {
+    font-variation-settings: "FILL" 1;
   }
 }

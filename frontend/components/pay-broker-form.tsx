@@ -65,7 +65,7 @@ export function PayBrokerForm({
 
   if (others.length === 0) {
     return (
-      <p className="px-6 py-5 text-[0.8125rem] text-muted">
+      <p className="px-6 py-5 text-label-md text-on-surface-variant">
         No hay otros brokers en la red todavía.
       </p>
     );
@@ -110,7 +110,7 @@ export function PayBrokerForm({
       </div>
 
       {notEnough && (
-        <p className="rounded-lg bg-negative-soft px-3 py-2 text-[0.8125rem] text-negative">
+        <p className="rounded-lg bg-error-container px-3 py-2 text-label-md text-error">
           No te alcanza: tenés {formatMoney(me.balance)} y querés pagar{" "}
           {formatMoney(cents)}.
         </p>
@@ -124,8 +124,8 @@ export function PayBrokerForm({
             : "Pagar"}
       </Button>
 
-      {error && <p className="text-[0.8125rem] text-negative">{error}</p>}
-      {done && <p className="text-[0.8125rem] text-positive">{done}</p>}
+      {error && <p className="text-label-md text-error">{error}</p>}
+      {done && <p className="text-label-md text-secondary">{done}</p>}
     </form>
   );
 }

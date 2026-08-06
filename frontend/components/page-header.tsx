@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+/** Cabecera de pantalla, pegajosa como en los mockups. */
 export function PageHeader({
   eyebrow,
   title,
@@ -12,19 +13,23 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-8 flex items-end justify-between gap-6">
-      <div>
-        {eyebrow && (
-          <p className="text-[0.8125rem] font-medium text-brand">{eyebrow}</p>
-        )}
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
-          {title}
-        </h1>
-        {description && (
-          <p className="mt-2 max-w-2xl leading-relaxed text-muted">{description}</p>
-        )}
+    <section className="sticky top-0 z-30 bg-surface/90 px-lg py-md shadow-sm backdrop-blur-md">
+      <div className="flex flex-col justify-between gap-md lg:flex-row lg:items-center">
+        <div>
+          {eyebrow && (
+            <p className="text-label-sm-caps uppercase text-on-surface-variant">
+              {eyebrow}
+            </p>
+          )}
+          <h1 className="mt-xs text-headline-lg text-on-surface">{title}</h1>
+          {description && (
+            <p className="mt-xs max-w-3xl text-body-md text-on-surface-variant">
+              {description}
+            </p>
+          )}
+        </div>
+        {action}
       </div>
-      {action}
-    </div>
+    </section>
   );
 }

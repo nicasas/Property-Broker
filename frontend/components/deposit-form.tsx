@@ -80,8 +80,8 @@ export function DepositForm({ brokers }: { brokers: Account[] }) {
         {pending ? "Cargando…" : "Cargar saldo"}
       </Button>
 
-      {error && <p className="text-[0.8125rem] text-negative">{error}</p>}
-      {done && <p className="text-[0.8125rem] text-positive">{done}</p>}
+      {error && <p className="text-label-md text-error">{error}</p>}
+      {done && <p className="text-label-md text-secondary">{done}</p>}
     </form>
   );
 }

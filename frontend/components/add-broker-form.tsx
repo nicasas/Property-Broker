@@ -67,7 +67,7 @@ export function AddBrokerForm() {
         </Button>
       </div>
 
-      {error && <p className="text-[0.8125rem] text-negative">{error}</p>}
+      {error && <p className="text-label-md text-error">{error}</p>}
     </form>
   );
 }

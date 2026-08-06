@@ -151,7 +151,7 @@ export function ReportCommissionForm({
       </div>
 
       {notEnoughBalance && cents > 0 && (
-        <p className="rounded-lg bg-pending-soft px-3 py-2 text-[0.8125rem] text-pending">
+        <p className="rounded-lg bg-tertiary-fixed px-3 py-2 text-label-md text-on-tertiary-fixed">
           {reporter?.name} tiene {formatMoney(reporter?.balance ?? 0)}. Se puede
           reportar igual, pero la aprobación va a fallar por saldo insuficiente
           hasta que se le cargue el faltante.
@@ -162,10 +162,10 @@ export function ReportCommissionForm({
         <Button type="submit" disabled={pending || !ready}>
           {pending ? "Reportando…" : "Reportar comisión"}
         </Button>
-        <span className="text-xs text-faint">Queda pendiente de aprobación.</span>
+        <span className="text-xs text-on-surface-variant/60">Queda pendiente de aprobación.</span>
       </div>
 
-      {error && <p className="text-[0.8125rem] text-negative">{error}</p>}
+      {error && <p className="text-label-md text-error">{error}</p>}
     </form>
   );
 }

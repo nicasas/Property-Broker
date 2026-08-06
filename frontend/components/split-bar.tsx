@@ -4,8 +4,16 @@ import { formatBps } from "@/lib/format";
  * El acuerdo de reparto, visto de un vistazo.
  *
  * Tres segmentos proporcionales a los basis points. La barra comunica en un
- * segundo lo que una tabla de porcentajes obliga a leer y comparar.
+ * segundo lo que una tabla de porcentajes obliga a leer y comparar. Los colores
+ * son los mismos en toda la aplicación, así que el segmento verde siempre
+ * significa "la parte de quien vende".
  */
+const SEGMENTS = [
+  { key: "listing", label: "Capta", className: "bg-on-tertiary-container" },
+  { key: "selling", label: "Vende", className: "bg-secondary" },
+  { key: "platform", label: "Plataforma", className: "bg-surface-container-highest" },
+] as const;
+
 export function SplitBar({
   listingBps,
   sellingBps,
@@ -17,38 +25,38 @@ export function SplitBar({
   platformBps: number;
   showLegend?: boolean;
 }) {
-  const segments = [
-    { label: "Capta", bps: listingBps, className: "bg-brand" },
-    { label: "Vende", bps: sellingBps, className: "bg-brand/55" },
-    { label: "Plataforma", bps: platformBps, className: "bg-brand/25" },
-  ];
+  const values = {
+    listing: listingBps,
+    selling: sellingBps,
+    platform: platformBps,
+  };
 
   return (
-    <div className="space-y-2">
-      <div className="flex h-1.5 overflow-hidden rounded-full bg-canvas">
-        {segments.map((segment) => (
+    <div className="space-y-sm">
+      <div className="flex h-2 overflow-hidden rounded-full bg-surface-container">
+        {SEGMENTS.map((segment) => (
           <div
-            key={segment.label}
+            key={segment.key}
             className={segment.className}
-            style={{ width: `${segment.bps / 100}%` }}
+            style={{ width: `${values[segment.key] / 100}%` }}
           />
         ))}
       </div>
 
       {showLegend && (
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {segments.map((segment) => (
+        <div className="flex flex-wrap gap-x-md gap-y-xs">
+          {SEGMENTS.map((segment) => (
             <span
-              key={segment.label}
-              className="flex items-center gap-1.5 text-xs text-muted"
+              key={segment.key}
+              className="flex items-center gap-xs text-label-md text-on-surface-variant"
             >
               <span
                 className={`size-2 rounded-full ${segment.className}`}
                 aria-hidden
               />
               {segment.label}
-              <span className="tnum font-medium text-ink">
-                {formatBps(segment.bps)}
+              <span className="tnum font-semibold text-on-surface">
+                {formatBps(values[segment.key])}
               </span>
             </span>
           ))}

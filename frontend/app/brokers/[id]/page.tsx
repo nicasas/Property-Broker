@@ -46,20 +46,20 @@ export default async function BrokerPage({
   const listingOf = new Map(listings.map((l) => [l.id, l]));
 
   return (
-    <>
+    <div className="space-y-lg p-lg">
       <header className="mb-8 flex items-start justify-between gap-6">
         <div className="flex items-center gap-4">
-          <span className="grid size-14 place-items-center rounded-2xl bg-brand-soft text-lg font-semibold text-brand">
+          <span className="grid size-14 place-items-center rounded-2xl bg-primary-container text-lg font-semibold text-primary">
             {initials(broker.name)}
           </span>
           <div>
-            <p className="text-[0.8125rem] font-medium text-muted">
+            <p className="text-label-md font-medium text-on-surface-variant">
               Broker de la red
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight text-ink">
+            <h1 className="text-2xl font-semibold tracking-tight text-on-surface">
               {broker.name}
             </h1>
-            <p className="mt-1 text-[0.8125rem] text-muted">
+            <p className="mt-1 text-label-md text-on-surface-variant">
               {published.length === 0
                 ? "Sin inmuebles publicados"
                 : `${published.length} inmueble${published.length > 1 ? "s" : ""} publicado${published.length > 1 ? "s" : ""}`}
@@ -70,7 +70,7 @@ export default async function BrokerPage({
         </div>
         <Link
           href="/brokers"
-          className="shrink-0 text-[0.8125rem] font-medium text-brand hover:underline"
+          className="shrink-0 text-label-md font-medium text-primary hover:underline"
         >
           Todos los brokers
         </Link>
@@ -85,13 +85,13 @@ export default async function BrokerPage({
           {published.length === 0 ? (
             <EmptyState title="Todavía no publicó inmuebles" />
           ) : (
-            <ul className="divide-y divide-line">
+            <ul className="divide-y divide-outline-variant/30">
               {published.map((listing) => (
                 <li key={listing.id} className="px-6 py-4">
-                  <p className="text-[0.8125rem] font-medium text-ink">
+                  <p className="text-label-md font-medium text-on-surface">
                     {listing.address}
                   </p>
-                  <p className="mt-1 text-[0.8125rem] text-brand">
+                  <p className="mt-1 text-label-md text-primary">
                     {formatBps(listing.selling_broker_bps)} para vos si traés el
                     cliente
                   </p>
@@ -120,15 +120,15 @@ export default async function BrokerPage({
               description="Cuando compartan una comisión, aparece acá."
             />
           ) : (
-            <ul className="divide-y divide-line">
+            <ul className="divide-y divide-outline-variant/30">
               {together.map((commission) => (
                 <li key={commission.id} className="px-6 py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-[0.8125rem] font-medium text-ink">
+                      <p className="truncate text-label-md font-medium text-on-surface">
                         {listingOf.get(commission.listing_id)?.address}
                       </p>
-                      <p className="mt-0.5 text-xs text-faint">
+                      <p className="mt-0.5 text-xs text-on-surface-variant/60">
                         {formatDate(commission.created_at)}
                       </p>
                     </div>
@@ -148,7 +148,7 @@ export default async function BrokerPage({
                           : "Rechazada"}
                     </Badge>
                   </div>
-                  <p className="tnum mt-2 text-[0.8125rem] text-muted">
+                  <p className="tnum mt-2 text-label-md text-on-surface-variant">
                     Comisión bruta {formatMoney(commission.gross_amount)}
                   </p>
                 </li>
@@ -158,11 +158,11 @@ export default async function BrokerPage({
         </Card>
       </div>
 
-      <p className="mt-6 text-xs leading-relaxed text-faint">
+      <p className="mt-6 text-xs leading-relaxed text-on-surface-variant/60">
         El saldo y los movimientos de {broker.name.split(" ")[0]} son privados. Solo
         ves los negocios en los que participaste.
       </p>
-    </>
+    </div>
   );
 }
 
