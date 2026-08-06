@@ -256,3 +256,64 @@ def test_flujo_completo_por_http(client):
     assert salud["is_balanced"] is True
     assert salud["ledger_total"] == 0
     assert salud["mismatches"] == []
+
+
+# --------------------------------------------------------------------------
+# Las patas de un movimiento
+# --------------------------------------------------------------------------
+
+
+def test_las_patas_de_una_transferencia_revelan_la_contraparte(client, make_broker):
+    """El historial de una cuenta trae solo SUS filas, asi que quien recibe un
+    pago ve su pata y nunca la del otro lado.
+
+    La contraparte no se pierde: la contabilidad de partida doble la registra en
+    la otra pata del mismo `movement_id`. Este endpoint es lo que permite leerla,
+    sin duplicar el dato en `reference` —que ya significa otra cosa: el hecho de
+    negocio que origino el movimiento.
+    """
+    origen = make_broker(balance=100_000)
+    destino = make_broker()
+
+    movimiento = client.post(
+        "/transfers",
+        json={
+            "from_account_id": str(origen),
+            "to_account_id": str(destino),
+            "amount": 40_000,
+            "reference": "adelanto de comision",
+        },
+        headers={"Idempotency-Key": str(uuid.uuid4())},
+    ).json()
+
+    patas = client.get(f"/ledger/movements/{movimiento['movement_id']}").json()
+
+    assert len(patas) == 2
+    por_cuenta = {p["account_id"]: p["amount"] for p in patas}
+    assert por_cuenta[str(origen)] == -40_000
+    assert por_cuenta[str(destino)] == 40_000
+    # La propiedad que hace confiable la respuesta: las patas suman cero.
+    assert sum(p["amount"] for p in patas) == 0
+    # El concepto sigue en `reference`, sin mezclarse con la contraparte.
+    assert all(p["reference"] == "adelanto de comision" for p in patas)
+
+
+def test_las_patas_de_un_deposito_incluyen_la_cuenta_externa(client, make_broker):
+    broker = make_broker()
+    movimiento = client.post(
+        "/deposits",
+        json={"account_id": str(broker), "amount": 75_000},
+        headers={"Idempotency-Key": str(uuid.uuid4())},
+    ).json()
+
+    patas = client.get(f"/ledger/movements/{movimiento['movement_id']}").json()
+
+    assert len(patas) == 2
+    assert sum(p["amount"] for p in patas) == 0
+    assert str(EXTERNAL_ACCOUNT_ID) in {p["account_id"] for p in patas}
+
+
+def test_un_movimiento_inexistente_es_404(client):
+    respuesta = client.get(f"/ledger/movements/{uuid.uuid4()}")
+    assert respuesta.status_code == 404
+    assert respuesta.json()["error"] == "movement_not_found"

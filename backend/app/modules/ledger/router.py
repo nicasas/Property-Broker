@@ -121,6 +121,22 @@ def reconcile_account(
     )
 
 
+@router.get(
+    "/ledger/movements/{movement_id}", response_model=list[LedgerEntryResponse]
+)
+def get_movement(
+    movement_id: uuid.UUID, db: Session = Depends(get_db)
+) -> list[LedgerEntryResponse]:
+    """Las patas de un movimiento, para poder ver la contraparte.
+
+    El historial de una cuenta solo trae sus propias filas. Con esto se puede
+    responder de donde salio un pago o entre quienes se repartio una comision,
+    leyendo el mismo `movement_id` que ya agrupa los asientos.
+    """
+    entries = service.get_movement_entries(db, movement_id)
+    return [LedgerEntryResponse.model_validate(e) for e in entries]
+
+
 @router.get("/ledger/reconciliation", response_model=GlobalReconciliationResponse)
 def reconcile_all(db: Session = Depends(get_db)) -> GlobalReconciliationResponse:
     """Salud del sistema completo: SUM(ledger) == 0 y cada saldo cuadra con su ledger."""

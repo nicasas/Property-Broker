@@ -3,6 +3,7 @@ import {
   getAccounts,
   getCommissions,
   getListings,
+  getMovement,
 } from "@/lib/api";
 import type { Account, Commission, LedgerEntry, Listing } from "@/lib/api";
 import { formatDate, formatMoney, formatSignedMoney } from "@/lib/format";
@@ -37,6 +38,32 @@ export async function BrokerProfile({
   const nameOf = new Map(accounts.map((a) => [a.id, a.name]));
   const commissionOf = new Map(commissions.map((c) => [c.id, c]));
   const listingOf = new Map(listings.map((l) => [l.id, l]));
+
+  // De quién vino (o a quién fue) cada pago.
+  //
+  // El historial de una cuenta trae solo sus propias filas, así que la
+  // contraparte hay que buscarla en la otra pata del mismo movimiento. La
+  // partida doble garantiza que existe: son las dos filas que suman cero.
+  const transferMovements = [
+    ...new Set(
+      entries
+        .filter((e) => e.operation_type === "TRANSFER")
+        .map((e) => e.movement_id),
+    ),
+  ];
+  const counterpartyOf = new Map<string, string>();
+  await Promise.all(
+    transferMovements.map(async (movementId) => {
+      try {
+        const legs = await getMovement(movementId);
+        const other = legs.find((leg) => leg.account_id !== broker.id);
+        if (other) counterpartyOf.set(movementId, other.account_id);
+      } catch {
+        // Si el movimiento no se puede leer, el pago se muestra sin contraparte
+        // en vez de romper el historial entero.
+      }
+    }),
+  );
 
   const involved = commissions.filter(
     (c) =>
@@ -196,6 +223,7 @@ export async function BrokerProfile({
                   commissionOf,
                   listingOf,
                   nameOf,
+                  counterpartyOf,
                 );
                 return (
                   <li key={entry.id} className="flex gap-md px-lg py-md">
@@ -276,6 +304,7 @@ function describe(
   commissionOf: Map<string, Commission>,
   listingOf: Map<string, Listing>,
   nameOf: Map<string, string>,
+  counterpartyOf: Map<string, string>,
 ): Detail {
   if (entry.operation_type === "DEPOSIT") {
     return {
@@ -333,8 +362,16 @@ function describe(
   }
 
   const incoming = entry.amount > 0;
+  const otherId = counterpartyOf.get(entry.movement_id);
+  const other = otherId ? nameOf.get(otherId) : undefined;
+  const who = other
+    ? incoming
+      ? `de ${other}`
+      : `a ${other}`
+    : "entre brokers de la red";
+
   return {
-    title: incoming ? "Pago recibido" : "Pago enviado",
+    title: incoming ? `Pago recibido ${who}` : `Pago enviado ${who}`,
     description: entry.reference
       ? `Concepto: ${entry.reference}`
       : "Transferencia directa entre brokers de la red.",

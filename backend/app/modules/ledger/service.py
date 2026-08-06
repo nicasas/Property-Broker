@@ -24,7 +24,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from app.core.errors import InvalidMovement
+from app.core.errors import InvalidMovement, MovementNotFound
 from app.modules.accounts import service as accounts_service
 from app.modules.ledger import repository
 from app.modules.ledger.models import LedgerEntry, OperationType
@@ -200,6 +200,28 @@ def _require_positive(amount: int) -> None:
 # --------------------------------------------------------------------------
 # Historial y reconciliacion
 # --------------------------------------------------------------------------
+
+
+def get_movement_entries(
+    session: Session, movement_id: uuid.UUID
+) -> list[LedgerEntry]:
+    """Todas las patas de UN movimiento.
+
+    `GET /accounts/{id}/ledger` devuelve solo las filas de esa cuenta, así que
+    quien lo consulta ve su propia pata y nunca la del otro lado. Con la
+    contabilidad de partida doble esa informacion no se pierde —las patas
+    comparten `movement_id`— pero hasta ahora no habia forma de leerla por HTTP.
+
+    Esto es lo que permite responder "de quien vino este pago" sin duplicar la
+    contraparte en `reference`, que ya tiene otro significado: el hecho de
+    negocio que origino el movimiento.
+    """
+    entries = repository.list_by_movement(session, movement_id)
+    if not entries:
+        raise MovementNotFound(
+            "El movimiento no existe", movement_id=str(movement_id)
+        )
+    return entries
 
 
 def list_entries(
