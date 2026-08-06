@@ -65,6 +65,10 @@ services:
   frontend:
     build: ./frontend
     container_name: broker_frontend
+    # En desarrollo se corre `next dev`: recarga en caliente al editar. La imagen
+    # trae el build de produccion, que es lo que usa un despliegue real — aca se
+    # sobreescribe a proposito, igual que el --reload del backend.
+    command: npm run dev
     environment:
       # El navegador NUNCA habla directo con la API: no resolveria `api`, que es
       # un nombre de la red interna del compose. Todo fetch sale de Server

@@ -1,15 +1,16 @@
 #!/bin/sh
 set -e
 
-# Las migraciones corren ANTES de aceptar el primer request.
-#
-# Sin esto, `docker compose up` deja una API viva contra una base sin tablas: el
-# healthcheck responde y el primer POST revienta. Que el arranque falle temprano y
-# ruidoso es preferible a servir trafico sobre un esquema incompleto.
-#
-# `depends_on: service_healthy` en el compose garantiza que Postgres ya acepta
-# conexiones cuando llegamos aqui.
 echo "Aplicando migraciones..."
 alembic upgrade head
+
+# El puerto lo decide el entorno.
+#
+# En local el compose no define PORT y se usa 8000. Los proveedores gestionados
+# (Railway, Render, Fly...) asignan uno al azar en $PORT y esperan que el proceso
+# escuche exactamente ahi: si la app se queda fija en 8000, el despliegue termina
+# bien pero el healthcheck nunca responde y el servicio se marca como caido.
+: "${PORT:=8000}"
+export PORT
 
 exec "$@"

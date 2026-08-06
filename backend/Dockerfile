@@ -12,10 +12,14 @@ COPY . .
 
 EXPOSE 8000
 
-# El entrypoint aplica las migraciones y luego cede el paso al CMD.
+# El entrypoint aplica las migraciones, fija PORT si el entorno no lo trae, y
+# luego cede el paso al CMD.
 ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
 
 # Sin --reload: eso es una comodidad de desarrollo y el compose la agrega.
 # Dejarla en la imagen significaria enviar a produccion un servidor que se
 # reinicia solo cuando cambia un archivo.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+#
+# Se usa la forma "shell" para que $PORT se expanda: con la forma de lista, el
+# CMD no pasa por un shell y el valor llegaria literalmente como "$PORT".
+CMD uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
