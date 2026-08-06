@@ -103,5 +103,35 @@ services:
       postgres:
         condition: service_healthy
 
+  # Snapshots periodicos de la base, con retencion.
+  #
+  # Usa la MISMA imagen de Postgres que el resto del proyecto: pg_dump ya viene
+  # adentro, asi que no hay imagen nueva que descargar ni dependencia que sumar.
+  #
+  # No arranca por defecto. `docker compose up` deja el sistema limpio para quien
+  # lo clone; los backups se piden explicitamente:
+  #
+  #     docker compose --profile backup up -d
+  #
+  # Restaurar una foto:
+  #
+  #     docker compose exec -T postgres psql -U broker -d broker < backups/<archivo>.sql
+  backup:
+    image: postgres:16-alpine
+    container_name: broker_backup
+    profiles: ["backup"]
+    environment:
+      PGPASSWORD: broker
+      # Cada 15 minutos, conservando las ultimas 12 fotos (3 horas de historia).
+      BACKUP_INTERVAL_SECONDS: 900
+      KEEP_LAST: 12
+    volumes:
+      - ./backups:/backups
+      - ./ops/backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
