@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   getAccountLedger,
   getAccounts,
@@ -7,21 +6,26 @@ import {
 } from "@/lib/api";
 import type { Account, Commission, LedgerEntry, Listing } from "@/lib/api";
 import { formatDate, formatMoney, formatSignedMoney } from "@/lib/format";
-import { Badge, Card, CardHeader, EmptyState, Money } from "@/components/ui";
+import { Badge, Card, EmptyState, StatCard } from "@/components/ui";
+import { Icon } from "@/components/icon";
 
 /**
- * Perfil de un broker: cuánto tiene y de dónde salió cada peso.
+ * DASHBOARD DE MIS COMISIONES.
  *
- * Este es el ledger-con-contexto. Un banco muestra "COMMISSION_SPLIT −8.000.000";
- * acá cada movimiento dice de qué inmueble vino, con qué broker y por qué rol.
- * Los datos son exactamente los mismos: cambia que se cuentan.
+ * Arriba, las cifras. Al centro, la tabla de transacciones con el desglose por
+ * rol. Abajo, la actividad: el ledger-con-contexto.
+ *
+ * Esa última parte es el punto de producto del reto. Un banco muestra
+ * "COMMISSION_SPLIT −8.000.000"; acá cada movimiento dice de qué inmueble vino,
+ * con qué broker y por qué rol tocaba esa parte. Los datos son los mismos
+ * asientos: la traducción sale de `reference`, que guarda el id de la comisión.
  */
 export async function BrokerProfile({
   broker,
-  extra,
+  actions,
 }: {
   broker: Account;
-  extra?: React.ReactNode;
+  actions?: React.ReactNode;
 }) {
   const [entries, commissions, listings, accounts] = await Promise.all([
     getAccountLedger(broker.id),
@@ -34,130 +38,231 @@ export async function BrokerProfile({
   const commissionOf = new Map(commissions.map((c) => [c.id, c]));
   const listingOf = new Map(listings.map((l) => [l.id, l]));
 
-  const earned = entries
-    .filter((e) => e.amount > 0)
-    .reduce((sum, e) => sum + e.amount, 0);
-  const paid = entries
-    .filter((e) => e.amount < 0)
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  const settled = commissions.filter(
+  const involved = commissions.filter(
     (c) =>
-      c.status === "EXECUTED" &&
-      (c.reported_by_account_id === broker.id ||
-        c.listing_broker_account_id === broker.id ||
-        c.selling_broker_account_id === broker.id),
+      c.reported_by_account_id === broker.id ||
+      c.listing_broker_account_id === broker.id ||
+      c.selling_broker_account_id === broker.id,
   );
+  const settled = involved.filter((c) => c.status === "EXECUTED");
+  const pending = involved.filter((c) => c.status === "PENDING");
+
+  const earned = settled.reduce((sum, c) => sum + myShare(c, broker.id), 0);
+  const pendingGross = pending.reduce((sum, c) => sum + c.gross_amount, 0);
 
   return (
-    <>
-      <header className="mb-8 flex items-start justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <span className="grid size-14 place-items-center rounded-2xl bg-brand text-lg font-semibold text-white">
-            {initials(broker.name)}
-          </span>
+    <div className="flex w-full flex-col">
+      <section className="sticky top-0 z-30 bg-surface/90 px-lg py-md shadow-sm backdrop-blur-md">
+        <div className="flex flex-col justify-between gap-md lg:flex-row lg:items-center">
           <div>
-            <p className="text-[0.8125rem] font-medium text-brand">Mi cuenta</p>
-            <h1 className="text-2xl font-semibold tracking-tight text-ink">
-              {broker.name}
+            <p className="text-label-sm-caps uppercase text-on-surface-variant">
+              Mi cuenta · {broker.name}
+            </p>
+            <h1 className="mt-xs text-headline-lg text-on-surface">
+              Dashboard de comisiones
             </h1>
-            <p className="mt-1 text-[0.8125rem] text-muted">
-              {settled.length === 0
-                ? "Sin comisiones liquidadas todavía"
-                : `${settled.length} comisión${settled.length > 1 ? "es" : ""} liquidada${settled.length > 1 ? "s" : ""}`}
+            <p className="mt-xs text-body-md text-on-surface-variant">
+              Lo que gané, lo que está en curso y de dónde salió cada peso.
             </p>
           </div>
         </div>
-        <Link
-          href="/brokers"
-          className="shrink-0 text-[0.8125rem] font-medium text-brand hover:underline"
-        >
-          Todos los brokers
-        </Link>
-      </header>
+      </section>
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <Card className="bg-brand p-5">
-          <p className="text-[0.8125rem] text-white/70">
-            Tengo en mi cuenta
-          </p>
-          <p className="tnum mt-1 text-3xl font-semibold tracking-tight text-white">
-            {formatMoney(broker.balance)}
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-[0.8125rem] text-muted">Recibido</p>
-          <p className="tnum mt-1 text-3xl font-semibold tracking-tight text-positive">
-            {formatMoney(earned)}
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-[0.8125rem] text-muted">Entregado</p>
-          <p className="tnum mt-1 text-3xl font-semibold tracking-tight text-ink">
-            {formatMoney(Math.abs(paid))}
-          </p>
-        </Card>
-      </div>
-
-      {extra}
-
-      <Card>
-        <CardHeader
-          title="Mi actividad"
-          description="Cada movimiento, con el inmueble y el broker detrás."
-        />
-        {entries.length === 0 ? (
-          <EmptyState
-            title="Sin movimientos"
-            description="Cuando recibas una comisión o participes de un reparto, aparece acá." 
+      <section className="space-y-lg p-lg">
+        <div className="grid grid-cols-1 gap-lg md:grid-cols-3">
+          <StatCard
+            label="En mi cuenta"
+            value={formatMoney(broker.balance)}
+            icon="account_balance_wallet"
+            tone="secondary"
+            caption="Saldo disponible ahora"
           />
-        ) : (
-          <ul className="divide-y divide-line">
-            {entries.map((entry) => {
-              const detail = describe(
-                entry,
-                broker.id,
-                commissionOf,
-                listingOf,
-                nameOf,
-              );
-              return (
-                <li key={entry.id} className="flex gap-4 px-6 py-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium text-ink">
+          <StatCard
+            label="Ganado en repartos"
+            value={formatMoney(earned)}
+            icon="trending_up"
+            caption={`${settled.length} colaboración${settled.length === 1 ? "" : "es"} liquidada${settled.length === 1 ? "" : "s"}`}
+          />
+          <StatCard
+            label="Comisiones pendientes"
+            value={formatMoney(pendingGross)}
+            icon="pending_actions"
+            caption={
+              pending.length === 0
+                ? "Nada esperando aprobación"
+                : `Esperando aprobación de ${pending.length} negocio${pending.length === 1 ? "" : "s"}`
+            }
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-lg lg:grid-cols-3">
+          {actions && <div className="space-y-lg lg:col-span-1">{actions}</div>}
+
+          <div
+            className={`overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm ${
+              actions ? "lg:col-span-2" : "lg:col-span-3"
+            }`}
+          >
+            <div className="flex items-center gap-sm border-b border-surface-container-highest px-lg py-md">
+              <Icon name="receipt_long" className="text-[20px] text-on-surface-variant" />
+              <h2 className="text-label-md font-semibold text-on-surface">
+                Mis transacciones
+              </h2>
+            </div>
+
+            {settled.length === 0 ? (
+              <EmptyState
+                icon="request_quote"
+                title="Sin comisiones liquidadas"
+                description="Cuando se apruebe una colaboración tuya, el desglose aparece acá."
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-surface-container-low text-label-sm-caps uppercase tracking-wider text-on-surface-variant">
+                      <th className="px-md py-sm font-semibold">Propiedad</th>
+                      <th className="px-md py-sm font-semibold">Rol</th>
+                      <th className="px-md py-sm text-right font-semibold">
+                        Bruto
+                      </th>
+                      <th className="px-md py-sm text-right font-semibold">
+                        Fee plat.
+                      </th>
+                      <th className="px-md py-sm text-right font-semibold">
+                        Mi parte
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/20">
+                    {settled.map((commission) => (
+                      <tr key={commission.id} className="hover:bg-surface-container-low">
+                        <td className="max-w-[220px] px-md py-sm">
+                          <p className="truncate text-label-md text-on-surface">
+                            {listingOf.get(commission.listing_id)?.address}
+                          </p>
+                          <p className="text-label-sm-caps uppercase text-on-surface-variant/70">
+                            {formatDate(commission.approved_at ?? commission.created_at)}
+                          </p>
+                        </td>
+                        <td className="px-md py-sm">
+                          <Badge tone="neutral">
+                            {rolesOf(commission, broker.id)}
+                          </Badge>
+                        </td>
+                        <td className="tnum px-md py-sm text-right text-mono-data text-on-surface-variant">
+                          {formatMoney(commission.gross_amount)}
+                        </td>
+                        <td className="tnum px-md py-sm text-right text-mono-data text-on-surface-variant">
+                          {formatMoney(commission.platform_share ?? 0)}
+                        </td>
+                        <td className="tnum px-md py-sm text-right text-mono-data text-secondary">
+                          {formatMoney(myShare(commission, broker.id))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Card>
+          <div className="flex items-center gap-sm border-b border-surface-container-highest px-lg py-md">
+            <Icon name="history" className="text-[20px] text-on-surface-variant" />
+            <div>
+              <h2 className="text-label-md font-semibold text-on-surface">
+                Mi actividad
+              </h2>
+              <p className="mt-xs text-label-md text-on-surface-variant">
+                Cada movimiento, con el inmueble y el broker detrás.
+              </p>
+            </div>
+          </div>
+
+          {entries.length === 0 ? (
+            <EmptyState
+              icon="inbox"
+              title="Sin movimientos"
+              description="Cuando recibas una comisión o participes de un reparto, aparece acá."
+            />
+          ) : (
+            <ul className="divide-y divide-outline-variant/20">
+              {entries.map((entry) => {
+                const detail = describe(
+                  entry,
+                  broker.id,
+                  commissionOf,
+                  listingOf,
+                  nameOf,
+                );
+                return (
+                  <li key={entry.id} className="flex gap-md px-lg py-md">
+                    <span
+                      className={`mt-xs grid size-8 shrink-0 place-items-center rounded-full ${detail.tone}`}
+                    >
+                      <Icon name={detail.icon} className="text-[18px]" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-label-md font-semibold text-on-surface">
                         {detail.title}
                       </p>
-                      {detail.badge && (
-                        <Badge tone="neutral">{detail.badge}</Badge>
-                      )}
+                      <p className="mt-xs text-label-md text-on-surface-variant">
+                        {detail.description}
+                      </p>
+                      <p className="mt-xs text-label-sm-caps uppercase text-on-surface-variant/60">
+                        {formatDate(entry.created_at)}
+                      </p>
                     </div>
-                    <p className="mt-0.5 text-[0.8125rem] leading-relaxed text-muted">
-                      {detail.description}
-                    </p>
-                    <p className="mt-1 text-xs text-faint">
-                      {formatDate(entry.created_at)}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <Money tone={entry.amount > 0 ? "positive" : "negative"}>
-                      {formatSignedMoney(entry.amount)}
-                    </Money>
-                    <p className="tnum mt-0.5 text-xs text-faint">
-                      saldo {formatMoney(entry.balance_after)}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
-    </>
+                    <div className="shrink-0 text-right">
+                      <p
+                        className={`tnum text-mono-data ${
+                          entry.amount > 0 ? "text-secondary" : "text-on-surface"
+                        }`}
+                      >
+                        {formatSignedMoney(entry.amount)}
+                      </p>
+                      <p className="tnum mt-xs text-label-sm-caps uppercase text-on-surface-variant/60">
+                        saldo {formatMoney(entry.balance_after)}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      </section>
+    </div>
   );
 }
 
-type Detail = { title: string; description: string; badge?: string };
+/** Lo que me tocó a mí en una comisión: puedo tener dos roles a la vez. */
+function myShare(commission: Commission, brokerId: string): number {
+  let total = 0;
+  if (commission.listing_broker_account_id === brokerId)
+    total += commission.listing_broker_share ?? 0;
+  if (commission.selling_broker_account_id === brokerId)
+    total += commission.selling_broker_share ?? 0;
+  return total;
+}
+
+function rolesOf(commission: Commission, brokerId: string): string {
+  const roles: string[] = [];
+  if (commission.listing_broker_account_id === brokerId) roles.push("Captó");
+  if (commission.selling_broker_account_id === brokerId) roles.push("Vendió");
+  if (roles.length === 0 && commission.reported_by_account_id === brokerId)
+    roles.push("Reportó");
+  return roles.join(" y ");
+}
+
+type Detail = {
+  title: string;
+  description: string;
+  icon: string;
+  tone: string;
+};
 
 /**
  * Traduce un asiento del ledger al hecho de negocio que lo originó.
@@ -172,12 +277,13 @@ function describe(
   listingOf: Map<string, Listing>,
   nameOf: Map<string, string>,
 ): Detail {
-
   if (entry.operation_type === "DEPOSIT") {
     return {
       title: "Comisión recibida desde fuera de la red",
-      description: `Ingresó al sistema para poder repartirse. ${entry.reference ?? ""}`.trim(),
-      badge: "Ingreso",
+      description:
+        `Ingresó al sistema para poder repartirse. ${entry.reference ?? ""}`.trim(),
+      icon: "input",
+      tone: "bg-secondary-container text-on-secondary-container",
     };
   }
 
@@ -193,7 +299,8 @@ function describe(
       return {
         title: "Reparto de comisión",
         description: "Movimiento de un split.",
-        badge: "Reparto",
+        icon: "call_split",
+        tone: "bg-surface-container-high text-on-surface-variant",
       };
     }
 
@@ -212,33 +319,28 @@ function describe(
       return {
         title: `Reparto de la comisión de ${address}`,
         description: `Entregaste la comisión bruta de ${formatMoney(commission.gross_amount)} que habías recibido${other ? `, para repartirla con ${other}` : ""} y la plataforma.`,
-        badge: "Reparto",
+        icon: "call_split",
+        tone: "bg-surface-container-high text-on-surface-variant",
       };
     }
 
     return {
       title: `Tu parte de ${address}`,
       description: `Te tocó porque ${roleText}${other ? `, junto a ${other}` : ""}. Comisión bruta: ${formatMoney(commission.gross_amount)}.`,
-      badge: "Reparto",
+      icon: "call_split",
+      tone: "bg-secondary-container text-on-secondary-container",
     };
   }
 
-  // TRANSFER
-  const direction = entry.amount > 0 ? "Pago recibido" : "Pago enviado";
+  const incoming = entry.amount > 0;
   return {
-    title: direction,
+    title: incoming ? "Pago recibido" : "Pago enviado",
     description: entry.reference
       ? `Concepto: ${entry.reference}`
       : "Transferencia directa entre brokers de la red.",
-    badge: "Pago",
+    icon: incoming ? "call_received" : "call_made",
+    tone: incoming
+      ? "bg-secondary-container text-on-secondary-container"
+      : "bg-surface-container-high text-on-surface-variant",
   };
-}
-
-function initials(name: string): string {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
 }

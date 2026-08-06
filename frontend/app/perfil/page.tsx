@@ -28,8 +28,8 @@ export default async function MyAccountPage() {
   return (
     <BrokerProfile
       broker={me}
-      extra={
-        <div className="mb-6 grid gap-4 lg:grid-cols-2">
+      actions={
+        <>
           <Card>
             <CardHeader
               title="Registrar una comisión recibida"
@@ -47,7 +47,7 @@ export default async function MyAccountPage() {
             />
             <PayBrokerForm me={me} others={others} />
           </Card>
-        </div>
+        </>
       }
     />
   );

@@ -1,10 +1,14 @@
 /**
- * Set mínimo de componentes propios. Existen para que el espaciado, los radios y
- * los pesos tipográficos sean los mismos en todas las pantallas sin repetir
- * clases sueltas — no para reemplazar una librería.
+ * Componentes base, en el lenguaje visual de los mockups.
+ *
+ * Superficie blanca (`surface-container-lowest`) sobre fondo gris claro, radios
+ * chicos, sombra sutil que se levanta al hover. El color de marca es negro y se
+ * reserva para acciones; el verde (`secondary`) habla de dinero y de estados
+ * positivos.
  */
 
 import type { ReactNode } from "react";
+import { Icon } from "@/components/icon";
 
 export function Card({
   children,
@@ -15,7 +19,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgba(20,15,10,0.04)] ${className}`}
+      className={`rounded-xl bg-surface-container-lowest shadow-sm ${className}`}
     >
       {children}
     </div>
@@ -26,22 +30,30 @@ export function CardHeader({
   title,
   description,
   action,
+  icon,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  icon?: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
-      <div>
-        <h2 className="text-[0.9375rem] font-semibold tracking-tight text-ink">
-          {title}
-        </h2>
-        {description && (
-          <p className="mt-1 text-[0.8125rem] leading-relaxed text-muted">
-            {description}
-          </p>
+    <div className="flex items-start justify-between gap-md border-b border-surface-container-highest px-lg py-md">
+      <div className="flex items-start gap-sm">
+        {icon && (
+          <Icon
+            name={icon}
+            className="mt-[2px] text-[20px] text-on-surface-variant"
+          />
         )}
+        <div>
+          <h2 className="text-label-md font-semibold text-on-surface">{title}</h2>
+          {description && (
+            <p className="mt-xs text-label-md text-on-surface-variant">
+              {description}
+            </p>
+          )}
+        </div>
       </div>
       {action}
     </div>
@@ -52,15 +64,21 @@ export function CardHeader({
 export function EmptyState({
   title,
   description,
+  icon = "inbox",
 }: {
   title: string;
   description?: string;
+  icon?: string;
 }) {
   return (
-    <div className="px-6 py-14 text-center">
-      <p className="text-sm font-medium text-ink">{title}</p>
+    <div className="px-lg py-xl text-center">
+      <Icon
+        name={icon}
+        className="text-[32px] text-on-surface-variant/40"
+      />
+      <p className="mt-sm text-label-md font-semibold text-on-surface">{title}</p>
       {description && (
-        <p className="mx-auto mt-1.5 max-w-sm text-[0.8125rem] leading-relaxed text-muted">
+        <p className="mx-auto mt-xs max-w-sm text-label-md text-on-surface-variant">
           {description}
         </p>
       )}
@@ -71,24 +89,29 @@ export function EmptyState({
 type BadgeTone = "neutral" | "positive" | "negative" | "pending" | "brand";
 
 const badgeTones: Record<BadgeTone, string> = {
-  neutral: "bg-canvas text-muted border-line",
-  positive: "bg-positive-soft text-positive border-transparent",
-  negative: "bg-negative-soft text-negative border-transparent",
-  pending: "bg-pending-soft text-pending border-transparent",
-  brand: "bg-brand-soft text-brand border-brand-line",
+  neutral: "bg-surface-container-high text-on-surface-variant",
+  positive: "bg-secondary-container text-on-secondary-container",
+  negative: "bg-error-container text-on-error-container",
+  pending: "bg-tertiary-fixed text-on-tertiary-fixed",
+  brand: "bg-primary-container text-on-primary-container",
 };
 
 export function Badge({
   children,
   tone = "neutral",
+  dot = false,
 }: {
   children: ReactNode;
   tone?: BadgeTone;
+  dot?: boolean;
 }) {
   return (
     <span
-      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[0.6875rem] font-semibold uppercase tracking-wide ${badgeTones[tone]}`}
+      className={`inline-flex items-center gap-xs rounded-full px-sm py-xs text-label-sm-caps uppercase ${badgeTones[tone]}`}
     >
+      {dot && (
+        <span className="size-1.5 rounded-full bg-current" aria-hidden />
+      )}
       {children}
     </span>
   );
@@ -98,35 +121,42 @@ type ButtonProps = {
   children: ReactNode;
   variant?: "primary" | "secondary" | "ghost" | "danger";
   size?: "sm" | "md";
+  icon?: string;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 const buttonVariants = {
-  primary: "bg-brand text-white hover:bg-brand-hover border-transparent",
-  secondary: "bg-surface text-ink hover:bg-canvas border-line-strong",
-  ghost: "bg-transparent text-muted hover:text-ink hover:bg-canvas border-transparent",
-  danger: "bg-surface text-negative hover:bg-negative-soft border-line-strong",
+  primary:
+    "bg-primary text-on-primary shadow-sm hover:shadow-md",
+  secondary:
+    "bg-surface-container-high text-on-surface hover:bg-surface-container-highest",
+  ghost:
+    "bg-transparent text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
+  danger:
+    "bg-error-container text-on-error-container hover:brightness-95",
 };
 
 export function Button({
   children,
   variant = "primary",
   size = "md",
+  icon,
   className = "",
   ...props
 }: ButtonProps) {
   const sizes = {
-    sm: "h-8 px-3 text-[0.8125rem]",
-    md: "h-10 px-4 text-sm",
+    sm: "px-sm py-xs text-label-md",
+    md: "px-md py-sm text-label-md",
   };
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-lg border font-medium
-        transition-colors duration-150
-        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand
-        disabled:cursor-not-allowed disabled:opacity-45
+      className={`inline-flex items-center justify-center gap-xs rounded-xl font-medium
+        transition-all
+        focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary
+        disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none
         ${buttonVariants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >
+      {icon && <Icon name={icon} className="text-[18px]" />}
       {children}
     </button>
   );
@@ -143,24 +173,28 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[0.8125rem] font-medium text-ink">
+      <span className="mb-xs block text-label-sm-caps uppercase text-on-surface-variant">
         {label}
       </span>
       {children}
-      {hint && <span className="mt-1.5 block text-xs text-faint">{hint}</span>}
+      {hint && (
+        <span className="mt-xs block text-label-md text-on-surface-variant/70">
+          {hint}
+        </span>
+      )}
     </label>
   );
 }
 
-const controlStyles = `w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-ink
-  placeholder:text-faint transition-colors
-  focus:border-brand focus:outline-2 focus:outline-offset-0 focus:outline-brand/25`;
+const controlStyles = `w-full rounded-lg bg-surface-container-low px-md py-sm text-body-md text-on-surface
+  placeholder:text-on-surface-variant/60 transition-all
+  focus:outline-none focus:ring-2 focus:ring-primary/20`;
 
 export function Input({
   className = "",
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={`${controlStyles} h-10 ${className}`} {...props} />;
+  return <input className={`${controlStyles} ${className}`} {...props} />;
 }
 
 export function Select({
@@ -169,9 +203,18 @@ export function Select({
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select className={`${controlStyles} h-10 ${className}`} {...props}>
-      {children}
-    </select>
+    <div className="relative">
+      <select
+        className={`${controlStyles} cursor-pointer appearance-none pr-xl ${className}`}
+        {...props}
+      >
+        {children}
+      </select>
+      <Icon
+        name="expand_more"
+        className="pointer-events-none absolute right-sm top-1/2 -translate-y-1/2 text-on-surface-variant"
+      />
+    </div>
   );
 }
 
@@ -186,19 +229,57 @@ export function Money({
   size?: "sm" | "md" | "lg";
 }) {
   const tones = {
-    neutral: "text-ink",
-    positive: "text-positive",
-    negative: "text-negative",
-    muted: "text-muted",
+    neutral: "text-on-surface",
+    positive: "text-secondary",
+    negative: "text-error",
+    muted: "text-on-surface-variant",
   };
   const sizes = {
-    sm: "text-[0.8125rem]",
-    md: "text-sm",
-    lg: "text-2xl tracking-tight",
+    sm: "text-mono-data",
+    md: "text-label-md font-semibold",
+    lg: "text-headline-md",
   };
   return (
-    <span className={`tnum font-semibold ${tones[tone]} ${sizes[size]}`}>
-      {children}
-    </span>
+    <span className={`tnum ${tones[tone]} ${sizes[size]}`}>{children}</span>
+  );
+}
+
+/** Tarjeta de cifra, el "bento" de los mockups. */
+export function StatCard({
+  label,
+  value,
+  icon,
+  caption,
+  tone = "neutral",
+}: {
+  label: string;
+  value: ReactNode;
+  icon?: string;
+  caption?: ReactNode;
+  tone?: "neutral" | "primary" | "secondary";
+}) {
+  const surfaces = {
+    neutral: "bg-surface-container-lowest text-on-surface",
+    primary: "bg-primary-container text-on-primary",
+    secondary: "bg-secondary-container text-on-secondary-container",
+  };
+  const labelTone = {
+    neutral: "text-on-surface-variant",
+    primary: "text-on-primary-container",
+    secondary: "text-on-secondary-container/70",
+  };
+  return (
+    <div className={`rounded-xl p-md shadow-sm ${surfaces[tone]}`}>
+      <div className="flex items-start justify-between gap-sm">
+        <span className={`text-label-sm-caps uppercase ${labelTone[tone]}`}>
+          {label}
+        </span>
+        {icon && <Icon name={icon} className={`text-[20px] ${labelTone[tone]}`} />}
+      </div>
+      <p className="tnum mt-sm text-headline-lg">{value}</p>
+      {caption && (
+        <p className={`mt-xs text-label-md ${labelTone[tone]}`}>{caption}</p>
+      )}
+    </div>
   );
 }

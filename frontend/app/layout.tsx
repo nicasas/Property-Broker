@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Nav } from "@/components/nav";
+import { Sidebar } from "@/components/sidebar";
+import { Topbar } from "@/components/topbar";
 import { getAccounts } from "@/lib/api";
 import { getActiveBroker } from "@/lib/session";
 import "./globals.css";
@@ -35,9 +36,19 @@ export default async function RootLayout({
 
   return (
     <html lang="es" className={inter.variable}>
-      <body className="min-h-screen antialiased">
-        <Nav brokers={brokers} active={active} />
-        <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
+      <head>
+        {/* Material Symbols, la iconografía de los mockups. */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        />
+      </head>
+      <body className="bg-background text-body-md text-on-surface">
+        <Sidebar />
+        <div className="pl-sidebar-width">
+          <Topbar brokers={brokers} active={active} />
+          <main className="min-h-screen bg-surface pt-20">{children}</main>
+        </div>
       </body>
     </html>
   );

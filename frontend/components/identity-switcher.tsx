@@ -39,24 +39,24 @@ export function IdentitySwitcher({
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2.5 rounded-lg border border-line py-1.5 pl-1.5 pr-2.5 transition-colors hover:bg-canvas"
+        className="flex items-center gap-2.5 rounded-lg border border-outline-variant py-1.5 pl-1.5 pr-2.5 transition-colors hover:bg-surface-container-low"
       >
-        <span className="grid size-7 place-items-center rounded-md bg-brand text-[0.6875rem] font-semibold text-white">
+        <span className="grid size-7 place-items-center rounded-md bg-primary text-label-sm-caps font-semibold text-white">
           {initials(active.name)}
         </span>
         <span className="text-left leading-tight">
-          <span className="block text-[0.8125rem] font-medium text-ink">
+          <span className="block text-label-md font-medium text-on-surface">
             {active.name}
           </span>
           {/* El saldo, siempre a la vista: es el dato que un broker quiere
               chequear sin tener que navegar a ningún lado. */}
-          <span className="tnum block text-[0.6875rem] font-semibold text-brand">
+          <span className="tnum block text-label-sm-caps font-semibold text-primary">
             {formatMoney(active.balance)}
           </span>
         </span>
         <svg
           viewBox="0 0 12 12"
-          className={`size-3 text-faint transition-transform ${open ? "rotate-180" : ""}`}
+          className={`size-3 text-on-surface-variant/60 transition-transform ${open ? "rotate-180" : ""}`}
           aria-hidden
         >
           <path
@@ -76,13 +76,13 @@ export function IdentitySwitcher({
             onClick={() => setOpen(false)}
             aria-label="Cerrar"
           />
-          <div className="absolute right-0 top-full z-20 mt-2 w-72 overflow-hidden rounded-xl border border-line bg-surface shadow-lg">
-            <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-              <span className="text-xs text-faint">Actuando como</span>
+          <div className="absolute right-0 top-full z-20 mt-2 w-72 overflow-hidden rounded-xl border border-outline-variant bg-surface shadow-lg">
+            <div className="flex items-center justify-between border-b border-outline-variant px-4 py-2.5">
+              <span className="text-xs text-on-surface-variant/60">Actuando como</span>
               <Link
                 href="/perfil"
                 onClick={() => setOpen(false)}
-                className="text-xs font-medium text-brand hover:underline"
+                className="text-xs font-medium text-primary hover:underline"
               >
                 Ver mi cuenta
               </Link>
@@ -92,22 +92,22 @@ export function IdentitySwitcher({
                 <li key={broker.id}>
                   <button
                     onClick={() => switchTo(broker.id)}
-                    className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-canvas ${
-                      broker.id === active.id ? "bg-brand-soft/50" : ""
+                    className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:bg-surface-container-low ${
+                      broker.id === active.id ? "bg-surface-container-high/50" : ""
                     }`}
                   >
                     <span className="flex items-center gap-2.5">
-                      <span className="grid size-7 place-items-center rounded-md bg-canvas text-[0.6875rem] font-semibold text-muted">
+                      <span className="grid size-7 place-items-center rounded-md bg-surface-container-low text-label-sm-caps font-semibold text-on-surface-variant">
                         {initials(broker.name)}
                       </span>
-                      <span className="text-[0.8125rem] text-ink">
+                      <span className="text-label-md text-on-surface">
                         {broker.name}
                       </span>
                     </span>
                     {/* Solo el saldo propio. El de los demás es privado, y este
                         desplegable no es una excepción. */}
                     {broker.id === active.id && (
-                      <span className="tnum text-xs text-brand">
+                      <span className="tnum text-xs text-primary">
                         {formatMoney(broker.balance)}
                       </span>
                     )}
@@ -115,7 +115,7 @@ export function IdentitySwitcher({
                 </li>
               ))}
             </ul>
-            <p className="border-t border-line px-4 py-2.5 text-xs leading-relaxed text-faint">
+            <p className="border-t border-outline-variant px-4 py-2.5 text-xs leading-relaxed text-on-surface-variant/60">
               Simula una sesión. En producción esta identidad vendría de
               autenticación real.
             </p>

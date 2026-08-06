@@ -71,13 +71,13 @@ export function PublishListingForm({ me }: { me: Account }) {
   return (
     <form
       onSubmit={onSubmit}
-      className="space-y-4 rounded-xl border border-line bg-surface p-6"
+      className="space-y-4 rounded-xl border border-outline-variant bg-surface p-6"
     >
       <div>
-        <p className="text-[0.9375rem] font-semibold tracking-tight text-ink">
+        <p className="text-label-md font-semibold tracking-tight text-on-surface">
           Publicar un inmueble
         </p>
-        <p className="mt-1 text-[0.8125rem] leading-relaxed text-muted">
+        <p className="mt-1 text-label-md leading-relaxed text-on-surface-variant">
           Lo captás vos. Definí cómo se reparte la comisión cuando alguien lo venda.
         </p>
       </div>
@@ -126,7 +126,7 @@ export function PublishListingForm({ me }: { me: Account }) {
           platformBps={platformBps}
         />
       ) : (
-        <p className="rounded-lg bg-pending-soft px-3 py-2 text-[0.8125rem] text-pending">
+        <p className="rounded-lg bg-tertiary-fixed px-3 py-2 text-label-md text-on-tertiary-fixed">
           Los tres porcentajes tienen que sumar exactamente 100%. Ahora suman{" "}
           <span className="tnum font-medium">{(totalBps / 100).toFixed(2)}%</span>.
         </p>
@@ -141,7 +141,7 @@ export function PublishListingForm({ me }: { me: Account }) {
         </Button>
       </div>
 
-      {error && <p className="text-[0.8125rem] text-negative">{error}</p>}
+      {error && <p className="text-label-md text-error">{error}</p>}
     </form>
   );
 }

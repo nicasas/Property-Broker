@@ -81,5 +81,27 @@ services:
     depends_on:
       - api
 
+  # Explorador web de la base. Herramienta de DESARROLLO: no forma parte del
+  # sistema ni lo toca — es un cliente más, como lo sería psql o DBeaver.
+  #
+  # Sirve para ver que las garantías no son solo código: las restricciones, el
+  # trigger append-only y el invariante del ledger se pueden inspeccionar
+  # directamente sobre las tablas.
+  #
+  # No exponer en producción: da acceso completo a la base con las credenciales
+  # de quien entre.
+  adminer:
+    image: adminer:latest
+    container_name: broker_adminer
+    ports:
+      - "8080:8080"
+    environment:
+      # Precarga el servidor para que el login pida solo usuario y contraseña.
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: dracula
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
