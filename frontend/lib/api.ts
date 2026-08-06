@@ -180,3 +180,15 @@ export function getCommissions(params?: {
 export function getAccountLedger(accountId: string) {
   return api.get<LedgerEntry[]>(`/accounts/${accountId}/ledger`);
 }
+
+/**
+ * Las patas de un movimiento.
+ *
+ * El historial de una cuenta trae solo sus propias filas, así que quien recibe
+ * un pago ve su pata y nunca la del otro lado. La contraparte no se perdió: la
+ * partida doble la registra en la otra pata del mismo `movement_id`. Esto es lo
+ * que permite leerla.
+ */
+export function getMovement(movementId: string) {
+  return api.get<LedgerEntry[]>(`/ledger/movements/${movementId}`);
+}

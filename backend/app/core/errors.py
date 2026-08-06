@@ -79,6 +79,11 @@ class CommissionNotFound(DomainError):
     code = "commission_not_found"
 
 
+class MovementNotFound(DomainError):
+    status_code = 404
+    code = "movement_not_found"
+
+
 class InvalidSplitConfiguration(DomainError):
     """El acuerdo de reparto no cierra en 100%, o los bps son invalidos."""
 

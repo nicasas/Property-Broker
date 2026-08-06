@@ -135,6 +135,7 @@ export default async function CollaborationsPage() {
                             <ApproveActions
                               commission={commission}
                               accounts={accounts}
+                              meId={me?.id}
                             />
                           }
                         />

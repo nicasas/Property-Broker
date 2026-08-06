@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input, Money } from "@/components/ui";
+import { Button, Input } from "@/components/ui";
+import { Icon } from "@/components/icon";
 import { MutationError, mutate } from "@/lib/client";
 import { formatMoney, formatSignedMoney } from "@/lib/format";
 import { participantsOf } from "@/lib/participants";
@@ -12,26 +13,32 @@ import type { Account, Commission } from "@/lib/api";
 /**
  * El momento del split.
  *
- * Antes de aprobar se muestran los saldos actuales de las cuentas involucradas.
- * Al aprobar se toma una foto de esos saldos, se ejecuta y se llama a
+ * Al aprobar se toma una foto del saldo propio, se ejecuta y se llama a
  * `router.refresh()`: los Server Components vuelven a consultar la API y esta
  * misma tarjeta recibe los saldos nuevos, sin cambiar de pantalla.
  *
+ * QUÉ SE MUESTRA Y QUÉ NO. Del reparto se ve cuánto le tocó a cada parte —es un
+ * negocio compartido, las dos puntas conocen los montos— pero el SALDO de las
+ * otras cuentas no aparece: con cuánto queda otro broker es asunto suyo, igual
+ * que en el resto de la aplicación. El "antes → después" es solo del broker
+ * activo.
+ *
  * La foto NO vive acá sino en un contexto montado sobre el tablero: al aprobarse,
- * la tarjeta pasa de la columna "Pendientes" a "Liquidadas" y React la desmonta.
- * Guardarla arriba es lo que permite mostrar el "antes → después" con números
- * reales de las dos puntas. Ver components/split-snapshot.
+ * la tarjeta pasa de la columna "Esperando aprobación" a "Liquidadas" y React la
+ * desmonta. Guardarla arriba es lo que permite mostrar la transición.
+ * Ver components/split-snapshot.
  */
 export function ApproveActions({
   commission,
   accounts,
+  meId,
 }: {
   commission: Commission;
   accounts: Account[];
+  /** Broker activo: el único cuyo saldo se puede mostrar. */
+  meId: string | undefined;
 }) {
   const router = useRouter();
-  // La foto de saldos vive sobre el tablero, no en esta tarjeta: al aprobarse,
-  // la tarjeta se mueve de columna y se desmontaría. Ver components/split-snapshot.
   const { snapshotFor, remember, forget } = useSplitSnapshots();
   const before = snapshotFor(commission.id);
   const [pending, setPending] = useState<"approve" | "reject" | null>(null);
@@ -40,15 +47,15 @@ export function ApproveActions({
   const [reason, setReason] = useState("");
 
   const participants = participantsOf(commission, accounts);
+  const me = accounts.find((a) => a.id === meId);
+  const others = participants.filter((p) => p.account.id !== meId);
 
   async function onApprove() {
     setError(null);
     setPending("approve");
-    // Foto de los saldos ANTES de mover un peso.
-    remember(
-      commission.id,
-      Object.fromEntries(participants.map((p) => [p.account.id, p.account.balance])),
-    );
+    // Foto del saldo propio ANTES de mover un peso. De las otras cuentas no se
+    // guarda nada: no se van a mostrar.
+    if (me) remember(commission.id, { [me.id]: me.balance });
 
     try {
       await mutate(`/api/commissions/${commission.id}/approve`, {
@@ -86,8 +93,15 @@ export function ApproveActions({
 
   // ---------------------------------------------------------------- ejecutada
   if (commission.status === "EXECUTED") {
-    if (!before) return null; // se ejecutó en otra sesión: no hay foto previa
-    return <SplitResult commission={commission} accounts={accounts} before={before} />;
+    if (!before || !me) return null; // se ejecutó en otra sesión: no hay foto previa
+    return (
+      <SplitResult
+        commission={commission}
+        me={me}
+        others={others}
+        beforeMine={before[me.id] ?? me.balance}
+      />
+    );
   }
 
   if (commission.status !== "PENDING") return null;
@@ -95,34 +109,24 @@ export function ApproveActions({
   // ------------------------------------------------------------------ pendiente
   return (
     <div className="space-y-md">
-      <div>
-        <p className="text-label-sm-caps uppercase text-on-surface-variant">
-          Saldos antes de aprobar
-        </p>
-        <ul className="mt-sm space-y-xs">
-          {participants.map(({ account, roles }) => (
-            <li
-              key={account.id}
-              className="flex items-baseline justify-between gap-md"
-            >
-              <span className="truncate text-label-md text-on-surface-variant">
-                {account.name}
-                <span className="ml-xs text-on-surface-variant/60">{roles.join(" y ")}</span>
-              </span>
-              <Money size="sm" tone="muted">
-                {formatMoney(account.balance)}
-              </Money>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {me && (
+        <div className="flex items-baseline justify-between gap-md rounded-lg bg-surface-container-low px-md py-sm">
+          <span className="text-label-sm-caps uppercase text-on-surface-variant">
+            Tu saldo ahora
+          </span>
+          <span className="tnum text-mono-data text-on-surface">
+            {formatMoney(me.balance)}
+          </span>
+        </div>
+      )}
 
       {rejecting ? (
-        <div className="flex items-center gap-sm">
+        <div className="flex flex-wrap items-center gap-sm">
           <Input
             placeholder="Motivo del rechazo"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            className="min-w-[12rem] flex-1"
             autoFocus
           />
           <Button
@@ -138,8 +142,8 @@ export function ApproveActions({
         </div>
       ) : (
         <div className="flex items-center gap-sm">
-          <Button onClick={onApprove} disabled={pending !== null}>
-            {pending === "approve" ? "Ejecutando split…" : "Aprobar y liquidar"}
+          <Button onClick={onApprove} disabled={pending !== null} icon="bolt">
+            {pending === "approve" ? "Ejecutando…" : "Aprobar y repartir"}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setRejecting(true)}>
             Rechazar
@@ -157,21 +161,22 @@ export function ApproveActions({
 }
 
 /**
- * El resultado, ligado a ROLES y no solo a montos: quién entregó, quién recibió
- * y por qué. Los deltas salen de comparar la foto previa con los saldos que
- * acaba de devolver la API.
+ * El resultado del reparto.
+ *
+ * Del broker activo se muestra la transición completa de su saldo. Del resto,
+ * SOLO lo que recibió en este negocio — nunca con cuánto quedó.
  */
 function SplitResult({
   commission,
-  accounts,
-  before,
+  me,
+  others,
+  beforeMine,
 }: {
   commission: Commission;
-  accounts: Account[];
-  before: Record<string, number>;
+  me: Account;
+  others: ReturnType<typeof participantsOf>;
+  beforeMine: number;
 }) {
-  const participants = participantsOf(commission, accounts);
-
   const shares = [
     commission.listing_broker_share ?? 0,
     commission.selling_broker_share ?? 0,
@@ -186,65 +191,98 @@ function SplitResult({
   );
   const residue = (commission.platform_share ?? 0) - platformByBps;
 
-  const deltas = participants.map((p) => ({
-    ...p,
-    before: before[p.account.id] ?? p.account.balance,
-    after: p.account.balance,
-    delta: p.account.balance - (before[p.account.id] ?? p.account.balance),
-  }));
-  const deltaSum = deltas.reduce((sum, d) => sum + d.delta, 0);
+  const myDelta = me.balance - beforeMine;
+
+  /** Lo que se movió en la cuenta de cada otra parte, sin revelar su saldo. */
+  const movementOf = (accountId: string) => {
+    let amount = 0;
+    if (commission.listing_broker_account_id === accountId)
+      amount += commission.listing_broker_share ?? 0;
+    if (commission.selling_broker_account_id === accountId)
+      amount += commission.selling_broker_share ?? 0;
+    if (accountId === commission.reported_by_account_id)
+      amount -= commission.gross_amount;
+    return amount;
+  };
+
+  const otherMovements = others
+    .map((p) => ({ ...p, delta: movementOf(p.account.id) }))
+    .filter((p) => p.delta !== 0);
+
+  const total = myDelta + otherMovements.reduce((sum, p) => sum + p.delta, 0);
 
   return (
     <div className="space-y-md">
       <div className="flex items-center gap-sm">
-        <span className="grid size-6 place-items-center rounded-full bg-secondary text-label-sm-caps text-on-secondary">
-          ✓
+        <span className="grid size-6 place-items-center rounded-full bg-secondary">
+          <Icon name="check" className="text-[14px] text-on-secondary" />
         </span>
         <p className="text-label-md font-semibold text-on-surface">
-          Split ejecutado
+          Reparto ejecutado
         </p>
       </div>
 
-      {/* Movimiento de saldo, cuenta por cuenta. */}
-      <ul className="space-y-sm">
-        {deltas.map(({ account, roles, before: prev, after, delta }) => (
-          <li key={account.id} className="flex items-center justify-between gap-md">
-            <div className="min-w-0">
-              <p className="truncate text-label-md font-semibold text-on-surface">
-                {account.name}
-              </p>
-              <p className="text-label-sm-caps uppercase text-on-surface-variant/70">{roles.join(" y ")}</p>
-            </div>
+      {/* Mi cuenta: la única de la que se puede mostrar el saldo. */}
+      <div className="rounded-xl bg-surface-container-low p-md">
+        <p className="text-label-sm-caps uppercase text-on-surface-variant">
+          Tu cuenta
+        </p>
+        <div className="mt-sm flex flex-wrap items-baseline gap-x-sm gap-y-xs">
+          <span className="tnum text-mono-data text-on-surface-variant/60 line-through">
+            {formatMoney(beforeMine)}
+          </span>
+          <Icon name="arrow_forward" className="text-[16px] text-on-surface-variant/60" />
+          <span className="tnum text-headline-md text-on-surface">
+            {formatMoney(me.balance)}
+          </span>
+          <span
+            className={`tnum ml-auto text-mono-data ${
+              myDelta < 0 ? "text-error" : "text-secondary"
+            }`}
+          >
+            {formatSignedMoney(myDelta)}
+          </span>
+        </div>
+      </div>
 
-            <div className="flex shrink-0 items-center gap-sm">
-              <span className="tnum text-mono-data text-on-surface-variant/60 line-through">
-                {formatMoney(prev)}
-              </span>
-              <span className="text-on-surface-variant/60" aria-hidden>
-                →
-              </span>
-              <span className="tnum text-mono-data text-on-surface">
-                {formatMoney(after)}
-              </span>
-              <span
-                className={`tnum w-32 text-right text-mono-data ${
-                  delta < 0 ? "text-error" : "text-secondary"
-                }`}
+      {/* Las otras partes: cuánto recibieron, nunca con cuánto quedaron. */}
+      {otherMovements.length > 0 && (
+        <div>
+          <p className="text-label-sm-caps uppercase text-on-surface-variant">
+            Lo que recibió cada parte
+          </p>
+          <ul className="mt-sm space-y-xs">
+            {otherMovements.map(({ account, roles, delta }) => (
+              <li
+                key={account.id}
+                className="flex items-center justify-between gap-md"
               >
-                {formatSignedMoney(delta)}
-              </span>
-            </div>
-          </li>
-        ))}
-      </ul>
+                <span className="min-w-0 truncate text-label-md text-on-surface">
+                  {account.name}
+                  <span className="ml-xs text-on-surface-variant/70">
+                    {roles.join(" y ")}
+                  </span>
+                </span>
+                <span
+                  className={`tnum shrink-0 text-mono-data ${
+                    delta < 0 ? "text-error" : "text-secondary"
+                  }`}
+                >
+                  {formatSignedMoney(delta)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      {/* Los deltas suman cero: la plata solo se movió. */}
+      {/* Los movimientos suman cero: la plata solo se movió. */}
       <div className="flex items-center justify-between border-t border-surface-container-highest pt-sm">
         <span className="text-label-md text-on-surface-variant">
           Suma de los movimientos
         </span>
         <span className="tnum text-mono-data text-secondary">
-          {formatMoney(deltaSum)}
+          {formatMoney(total)}
         </span>
       </div>
 
