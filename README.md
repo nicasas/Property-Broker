@@ -1,6 +1,6 @@
 # Property Broker — Liquidación de comisiones entre brokers
 
-#Para entrar visitar el siguiente link: https://property-broker-production.up.railway.app/
+# Para entrar visitar el siguiente link: https://property-broker-production.up.railway.app/
 
 Una red de brokers inmobiliarios que reparten comisiones compartidas. Cuando se
 vende un inmueble, la comisión se divide entre el broker que lo captó, el que
