@@ -4,8 +4,8 @@ Una red de brokers inmobiliarios que reparten comisiones compartidas. Cuando se
 vende un inmueble, la comisión se divide entre el broker que lo captó, el que
 trajo al cliente y la plataforma.
 
-Lo ma importante en lo que me enfoque: **el sistema no puede perder ni un
-peso, ni duplicarlo** — ni ante fallos, ni ante concurrencia, ni ante reintentos.
+Lo mas importante en lo que me enfoque: **el sistema no puede perder ni crear ni un
+peso**
 
 ```bash
 cp backend/.env.example backend/.env
